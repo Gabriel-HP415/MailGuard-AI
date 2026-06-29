@@ -17,9 +17,11 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    # Path to the Dockerfile is relative to the repo root, not rootDir.
+    # Keeping rootDir here would make Render look for ./backend/Dockerfile
+    # relative to the /opt/render/project/src/backend root, which fails.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /api/v1/health
     autoDeploy: true
 
