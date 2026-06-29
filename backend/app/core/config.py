@@ -51,13 +51,20 @@ class Settings(BaseSettings):
     firebase_oauth_client_id: str = ""  # Chrome extension OAuth client (Web application type)
 
     # ---------- CORS ----------
-    cors_origins: List[str] = Field(
-        default=[
-            "http://localhost:3000",
-            "http://localhost:5500",
-            "chrome-extension://*",
-        ]
+    # Accept a comma-separated string from env (Render, plain `.env`) or a JSON
+    # array. pydantic-settings v2 runs JSON decode BEFORE field validators, so
+    # if we declared `List[str]` directly a value like
+    # `chrome-extension://*,http://localhost:5500` would crash on
+    # `json.loads(...)`. Reading as `str` and splitting below sidesteps that.
+    cors_origins_raw: str = Field(
+        default="http://localhost:3000,http://localhost:5500,chrome-extension://*",
+        validation_alias="CORS_ORIGINS",
     )
+
+    @property
+    def cors_origins(self) -> List[str]:
+        """Split the env-supplied string into a list of origins."""
+        return [item.strip() for item in self.cors_origins_raw.split(",") if item.strip()]
 
     # ---------- Rate Limiting ----------
     rate_limit_per_minute: int = 120
@@ -81,14 +88,6 @@ class Settings(BaseSettings):
     # ---------- Admin Bootstrap ----------
     admin_email: str = "admin@mailguard.ai"
     admin_password: str = "ChangeMe123!"
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def split_cors(cls, value):
-        """Allow comma-separated string or list."""
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
 
     @property
     def sqlalchemy_url(self) -> str:
