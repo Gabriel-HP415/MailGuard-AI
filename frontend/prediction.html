@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="page-auth" content="required" />
+    <title>Prediction — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <div id="navbar-mount"></div>
+
+    <main class="container my-4">
+      <a href="/predictions.html" class="text-muted small">← Back to predictions</a>
+
+      <section class="card card-mg p-4 my-3" id="detail">
+        <div class="mg-empty">Loading…</div>
+      </section>
+
+      <section class="card card-mg p-4 mb-3">
+        <h5>Send feedback</h5>
+        <div class="btn-group">
+          <button class="btn btn-outline-success" data-fb="true">✅ Mark correct</button>
+          <button class="btn btn-outline-danger" data-fb="false">❌ Report mistake</button>
+        </div>
+        <p class="text-muted small mb-0 mt-2" id="fb-status"></p>
+      </section>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/prediction-detail.js"></script>
+  </body>
+</html>

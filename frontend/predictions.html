@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="page-auth" content="required" />
+    <title>Predictions — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <div id="navbar-mount"></div>
+
+    <main class="container my-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Predictions</h1>
+        <button class="btn btn-outline-secondary btn-sm" id="refresh-btn">Refresh</button>
+      </div>
+
+      <form class="card card-mg p-3 mb-3" id="filter-form">
+        <div class="row g-2 align-items-end">
+          <div class="col-sm-3">
+            <label class="form-label small">Class</label>
+            <select class="form-select form-select-sm" id="filter-class">
+              <option value="">All</option>
+              <option value="normal">normal</option>
+              <option value="notification">notification</option>
+              <option value="spam">spam</option>
+              <option value="scam">scam</option>
+            </select>
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label small">Limit</label>
+            <select class="form-select form-select-sm" id="filter-limit">
+              <option>20</option><option>50</option><option>100</option>
+            </select>
+          </div>
+          <div class="col-sm-3">
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="card card-mg p-0">
+        <div class="table-responsive">
+          <table class="table mg-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Class</th>
+                <th>Risk</th>
+                <th>Threat</th>
+                <th>Subject</th>
+                <th>Sender</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="7" class="mg-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/predictions.js"></script>
+  </body>
+</html>

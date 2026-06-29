@@ -1,0 +1,113 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+mailguard_env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+mysql_data/
+
+# Model artifacts
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+*.bin
+models/artifacts/
+models/checkpoints/
+!models/.gitkeep
+
+# Datasets
+data/raw/
+data/processed/
+data/*.csv
+data/*.tsv
+data/*.json
+!data/.gitkeep
+!data/README.md
+
+# Logs
+logs/
+*.log
+*.log.*
+backend/logs/
+ai_service/logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+coverage.xml
+*.cover
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+desktop.ini
+$RECYCLE.BIN/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Node (extension build tools)
+node_modules/
+package-lock.json
+*.min.js
+*.min.css
+
+# Build outputs
+dist/
+build/
+*.zip
+*.tar.gz
+*.rar
+
+# Documentation build
+docs/_build/
+site/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp

@@ -1,0 +1,42 @@
+# ============================================
+# MailGuard-AI — AI Service Dependencies
+# ============================================
+# Python 3.11+
+# ============================================
+
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Settings & validation
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# ML / DL core
+numpy==1.26.4
+scipy==1.13.1
+scikit-learn==1.5.2
+pandas==2.2.3
+
+# Deep learning (transformers + torch)
+torch==2.4.1
+transformers==4.45.2
+datasets==3.0.1
+tokenizers==0.20.0
+accelerate==1.0.0
+
+# Explainability
+shap==0.46.0
+captum==0.7.0
+
+# HTTP client (when AI service needs to call backend)
+httpx==0.27.2
+
+# Utilities
+python-dotenv==1.0.1
+loguru==0.7.2
+
+# Dev / Testing
+pytest==8.3.3
+pytest-asyncio==0.24.0

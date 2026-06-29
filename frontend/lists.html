@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="page-auth" content="required" />
+    <title>Lists — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <div id="navbar-mount"></div>
+
+    <main class="container my-4">
+      <h1 class="h3 mb-3">Whitelist & Blacklist</h1>
+      <p class="text-muted">Trusted and suspicious senders specific to your account.</p>
+
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="card card-mg p-3 h-100">
+            <h5>Whitelist (trusted)</h5>
+            <form id="wl-form" class="row g-2 mb-2">
+              <div class="col-7">
+                <input type="text" class="form-control form-control-sm" id="wl-sender" placeholder="alice@company.com" required />
+              </div>
+              <div class="col-3">
+                <input type="text" class="form-control form-control-sm" id="wl-note" placeholder="Note" />
+              </div>
+              <div class="col-2"><button class="btn btn-sm btn-primary w-100">Add</button></div>
+            </form>
+            <ul id="wl-list" class="list-group list-group-flush"><li class="mg-empty">Loading…</li></ul>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card card-mg p-3 h-100">
+            <h5>Blacklist (suspicious)</h5>
+            <form id="bl-form" class="row g-2 mb-2">
+              <div class="col-7">
+                <input type="text" class="form-control form-control-sm" id="bl-sender" placeholder="spam@bad.com" required />
+              </div>
+              <div class="col-3">
+                <input type="text" class="form-control form-control-sm" id="bl-reason" placeholder="Reason" />
+              </div>
+              <div class="col-2"><button class="btn btn-sm btn-danger w-100">Add</button></div>
+            </form>
+            <ul id="bl-list" class="list-group list-group-flush"><li class="mg-empty">Loading…</li></ul>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/lists.js"></script>
+  </body>
+</html>

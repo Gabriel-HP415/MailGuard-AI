@@ -1,0 +1,167 @@
+/* MailGuard-AI Dashboard — base styles, on top of Bootstrap 5 */
+
+:root {
+  --mg-bg: #f8fafc;
+  --mg-card: #ffffff;
+  --mg-text: #0f172a;
+  --mg-muted: #64748b;
+  --mg-primary: #2563eb;
+  --mg-primary-dark: #1d4ed8;
+  --mg-success: #16a34a;
+  --mg-warning: #d97706;
+  --mg-danger: #dc2626;
+  --mg-critical: #7c2d12;
+  --mg-border: #e2e8f0;
+  --mg-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+html, body {
+  background: var(--mg-bg);
+  color: var(--mg-text);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+a {
+  color: var(--mg-primary);
+}
+
+.navbar-mg {
+  background: linear-gradient(135deg, #2563eb, #6366f1);
+  box-shadow: var(--mg-shadow);
+}
+.navbar-mg .navbar-brand,
+.navbar-mg .nav-link,
+.navbar-mg .navbar-text {
+  color: #fff !important;
+}
+.navbar-mg .nav-link.active {
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.card-mg {
+  background: var(--mg-card);
+  border: 1px solid var(--mg-border);
+  border-radius: 14px;
+  box-shadow: var(--mg-shadow);
+}
+
+.mg-stat {
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-align: center;
+}
+.mg-stat__num {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--mg-primary-dark);
+}
+.mg-stat__label {
+  font-size: 11px;
+  color: var(--mg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.threat-low      { background: #dcfce7 !important; color: #166534 !important; }
+.threat-medium   { background: #fef9c3 !important; color: #854d0e !important; }
+.threat-high     { background: #ffedd5 !important; color: #9a3412 !important; }
+.threat-critical { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 600; }
+
+.class-normal       { background: #dcfce7; color: #166534; }
+.class-notification { background: #dbeafe; color: #1e40af; }
+.class-spam         { background: #fef9c3; color: #854d0e; }
+.class-scam         { background: #fee2e2; color: #7f1d1d; }
+
+.badge-class {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mg-banner {
+  border-left: 6px solid var(--mg-primary);
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.mg-banner--critical { border-color: var(--mg-danger); }
+.mg-banner--high     { border-color: var(--mg-warning); }
+.mg-banner--medium   { border-color: #facc15; }
+.mg-banner--low      { border-color: var(--mg-success); }
+
+.mg-empty {
+  text-align: center;
+  padding: 36px 12px;
+  color: var(--mg-muted);
+  font-style: italic;
+}
+
+.mg-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: mg-spin 0.8s linear infinite;
+}
+@keyframes mg-spin { to { transform: rotate(360deg); } }
+
+.mg-toast-stack {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mg-toast {
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-size: 13px;
+  max-width: 360px;
+  animation: mg-toast-in 0.2s ease-out;
+}
+.mg-toast--success { background: var(--mg-success); }
+.mg-toast--warning { background: var(--mg-warning); }
+.mg-toast--danger  { background: var(--mg-danger); }
+@keyframes mg-toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.mg-mark {
+  background: #fff3bf;
+  padding: 0 3px;
+  border-radius: 3px;
+  border-bottom: 1px dashed rgba(0,0,0,0.2);
+}
+.mg-mark--url { background: #fde2e1; }
+
+.mg-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--mg-muted);
+  font-weight: 600;
+}
+.mg-table td {
+  vertical-align: middle;
+}
+
+.mg-auth-card {
+  max-width: 420px;
+  margin: 60px auto;
+  padding: 32px;
+}

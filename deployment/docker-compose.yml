@@ -1,0 +1,127 @@
+version: "3.9"
+
+# MailGuard-AI — full stack deployment
+#
+# Bring everything up:
+#   docker compose up -d --build
+#
+# Initialise the DB once after the backend is healthy:
+#   docker compose exec backend alembic upgrade head
+#   docker compose exec backend python -m app.database.seed
+#
+# Stop everything (keeps data volumes):
+#   docker compose down
+#
+# Stop and wipe data:
+#   docker compose down -v
+
+x-common-env: &common-env
+  APP_ENV: ${APP_ENV:-production}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+
+services:
+
+  # -------------------------------------------------------------
+  # MySQL 8 — primary persistent store
+  # -------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-mailguard_ai}
+      MYSQL_USER: ${DB_USER:-mailguard}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-mailguard}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - mg_net
+
+  # -------------------------------------------------------------
+  # AI Service — model serving
+  # -------------------------------------------------------------
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+      AB_TEST_ENABLED: ${AB_TEST_ENABLED:-false}
+      AB_TEST_CHALLENGER: ${AB_TEST_CHALLENGER:-}
+      AB_TEST_WEIGHT_B: ${AB_TEST_WEIGHT_B:-0.2}
+      INFERENCE_DEVICE: ${INFERENCE_DEVICE:-cpu}
+    volumes:
+      - ai_models:/app/models/artifacts
+      - ai_datasets:/app/datasets
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${AI_PORT:-8001}:8000"
+    networks:
+      - mg_net
+
+  # -------------------------------------------------------------
+  # Backend API — FastAPI
+  # -------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-mailguard_ai}
+      DB_USER: ${DB_USER:-mailguard}
+      DB_PASSWORD: ${DB_PASSWORD:-mailguard}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      AI_SERVICE_URL: http://ai_service:8000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ai_service:
+        condition: service_started
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - mg_net
+
+  # -------------------------------------------------------------
+  # Frontend — Bootstrap 5 dashboard via nginx
+  # -------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      MAILGUARD_API_BASE_URL: ${MAILGUARD_API_BASE_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - mg_net
+
+volumes:
+  mysql_data:
+  ai_models:
+  ai_datasets:
+
+networks:
+  mg_net:
+    driver: bridge

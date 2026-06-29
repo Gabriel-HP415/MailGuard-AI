@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="page-auth" content="admin" />
+    <title>Admin — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <div id="navbar-mount"></div>
+
+    <main class="container my-4">
+      <h1 class="h3 mb-3">Admin · Model versions</h1>
+      <p class="text-muted">Register, activate and roll back AI models.</p>
+
+      <form class="card card-mg p-3 mb-3" id="create-form">
+        <h5>Register a new model version</h5>
+        <div class="row g-2">
+          <div class="col-sm-3">
+            <input type="text" class="form-control form-control-sm" id="mv-version"
+                   placeholder="v1.0.0" required />
+          </div>
+          <div class="col-sm-3">
+            <select class="form-select form-select-sm" id="mv-algorithm">
+              <option value="naive_bayes">naive_bayes</option>
+              <option value="logistic_regression">logistic_regression</option>
+              <option value="svm">svm</option>
+              <option value="random_forest">random_forest</option>
+              <option value="distilbert">distilbert</option>
+            </select>
+          </div>
+          <div class="col-sm-2">
+            <input type="number" step="0.0001" class="form-control form-control-sm" id="mv-accuracy"
+                   placeholder="accuracy" />
+          </div>
+          <div class="col-sm-2">
+            <input type="text" class="form-control form-control-sm" id="mv-path"
+                   placeholder="artifact path" />
+          </div>
+          <div class="col-sm-2">
+            <button class="btn btn-primary btn-sm w-100">Create</button>
+          </div>
+        </div>
+        <textarea class="form-control mt-2" id="mv-desc" placeholder="Description"></textarea>
+      </form>
+
+      <div class="card card-mg p-0">
+        <div class="table-responsive">
+          <table class="table mg-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Algorithm</th>
+                <th>Accuracy</th>
+                <th>Active</th>
+                <th>Created</th>
+                <th>Description</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mv-tbody"><tr><td colspan="7" class="mg-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/admin.js"></script>
+  </body>
+</html>

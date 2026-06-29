@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MailGuard-AI — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="mg-options__header">
+      <h1>🛡️ MailGuard-AI — Settings</h1>
+      <span id="auth-pill" class="mg-pill mg-pill--offline">Checking…</span>
+    </header>
+
+    <main class="mg-options__main">
+      <!-- Auth & API base -->
+      <section class="mg-card" id="auth-card">
+        <h2>Account</h2>
+        <form id="auth-form">
+          <label>
+            <span>Backend URL</span>
+            <input type="text" id="base-url" placeholder="http://localhost:8000/api/v1" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" id="email" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" id="password" />
+          </label>
+          <div class="mg-options__row">
+            <button type="submit" name="action" value="login" class="mg-btn mg-btn--primary">Sign in</button>
+            <button type="submit" name="action" value="register" class="mg-btn">Register</button>
+            <button type="button" id="logout-btn" class="mg-btn mg-btn--danger">Sign out</button>
+          </div>
+        </form>
+        <p id="auth-status" class="mg-options__status"></p>
+      </section>
+
+      <!-- Whitelist -->
+      <section class="mg-card">
+        <h2>Whitelist (trusted senders)</h2>
+        <form id="whitelist-form" class="mg-options__row">
+          <input type="text" id="wl-sender" placeholder="sender@example.com" required />
+          <input type="text" id="wl-note" placeholder="Note (optional)" />
+          <button type="submit" class="mg-btn mg-btn--primary">Add</button>
+        </form>
+        <ul id="whitelist-list" class="mg-options__list">
+          <li class="mg-options__empty">Loading…</li>
+        </ul>
+      </section>
+
+      <!-- Blacklist -->
+      <section class="mg-card">
+        <h2>Blacklist (suspicious senders)</h2>
+        <form id="blacklist-form" class="mg-options__row">
+          <input type="text" id="bl-sender" placeholder="spam@bad.com" required />
+          <input type="text" id="bl-reason" placeholder="Reason (optional)" />
+          <button type="submit" class="mg-btn mg-btn--primary">Add</button>
+        </form>
+        <ul id="blacklist-list" class="mg-options__list">
+          <li class="mg-options__empty">Loading…</li>
+        </ul>
+      </section>
+
+      <!-- Service status -->
+      <section class="mg-card">
+        <h2>Service status</h2>
+        <div id="service-status" class="mg-options__status">Loading…</div>
+      </section>
+    </main>
+
+    <script src="options.js"></script>
+  </body>
+</html>

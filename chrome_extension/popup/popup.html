@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=380" />
+    <title>MailGuard-AI</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="mg-popup__header">
+      <div class="mg-popup__brand">
+        <span class="mg-popup__logo">🛡️</span>
+        <h1>MailGuard-AI</h1>
+      </div>
+      <span id="status-pill" class="mg-pill mg-pill--offline">Offline</span>
+    </header>
+
+    <main class="mg-popup__main">
+      <!-- Logged out: show login form -->
+      <section id="auth-section" class="mg-card">
+        <h2>Sign in</h2>
+        <form id="login-form">
+          <label>
+            <span>Email</span>
+            <input type="email" id="email" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" id="password" required minlength="8" />
+          </label>
+          <button type="submit" class="mg-btn mg-btn--primary">Sign in</button>
+        </form>
+        <p class="mg-popup__hint">
+          No account? <a href="#" id="open-register">Register</a>
+        </p>
+      </section>
+
+      <!-- Logged in: show quick stats + actions -->
+      <section id="dashboard-section" class="mg-card" hidden>
+        <h2>Hello, <span id="user-name">user</span> 👋</h2>
+        <div class="mg-stats">
+          <div class="mg-stat">
+            <span class="mg-stat__num" id="stat-total">-</span>
+            <span class="mg-stat__label">Predictions</span>
+          </div>
+          <div class="mg-stat">
+            <span class="mg-stat__num" id="stat-risks">-</span>
+            <span class="mg-stat__label">High risk</span>
+          </div>
+          <div class="mg-stat">
+            <span class="mg-stat__num" id="stat-avg">-</span>
+            <span class="mg-stat__label">Avg risk</span>
+          </div>
+        </div>
+
+        <h3>Recent</h3>
+        <ul id="recent-list" class="mg-list">
+          <li class="mg-list__empty">No predictions yet.</li>
+        </ul>
+
+        <div class="mg-popup__actions">
+          <button id="open-options" class="mg-btn">Manage lists & settings</button>
+          <button id="logout-btn" class="mg-btn mg-btn--danger">Sign out</button>
+        </div>
+      </section>
+
+      <p id="error-msg" class="mg-popup__error" hidden></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

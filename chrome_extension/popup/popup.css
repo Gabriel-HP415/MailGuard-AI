@@ -1,0 +1,240 @@
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --border: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  width: 380px;
+}
+
+.mg-popup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #2563eb, #6366f1);
+  color: #fff;
+}
+
+.mg-popup__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mg-popup__brand h1 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+
+.mg-popup__logo {
+  font-size: 22px;
+}
+
+.mg-pill {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.mg-pill--online {
+  background: rgba(34, 197, 94, 0.7);
+}
+
+.mg-pill--offline {
+  background: rgba(220, 38, 38, 0.7);
+}
+
+.mg-popup__main {
+  padding: 12px 14px 16px;
+}
+
+.mg-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.mg-card h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.mg-card h3 {
+  font-size: 12px;
+  margin: 14px 0 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+form label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+form label span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.mg-btn {
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+.mg-btn:hover {
+  background: #e2e8f0;
+}
+
+.mg-btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.mg-btn--primary:hover {
+  background: var(--primary-dark);
+}
+
+.mg-btn--danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.mg-btn--danger:hover {
+  background: #b91c1c;
+}
+
+.mg-popup__hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.mg-popup__error {
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid #fca5a5;
+}
+
+.mg-stats {
+  display: flex;
+  gap: 8px;
+}
+
+.mg-stat {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.mg-stat__num {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mg-stat__label {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mg-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.mg-list__item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+
+.mg-list__item__title {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mg-list__item__pill {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.mg-list__item__pill--scam,
+.mg-list__item__pill--spam {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.mg-list__empty {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.mg-popup__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mg-popup__actions button {
+  flex: 1;
+}

@@ -1,0 +1,27 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA-style rewrite so /dashboard, /predictions, ... map to *.html
+    location / {
+        try_files $uri $uri/ $uri.html $uri/ /index.html;
+    }
+
+    # Long cache for vendored assets
+    location ~* \.(?:css|js|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|ico)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # No-cache for HTML
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache";
+    }
+
+    # Friendly error
+    error_page 404 /index.html;
+}

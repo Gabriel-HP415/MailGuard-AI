@@ -1,0 +1,64 @@
+/* MailGuard-AI — content script styles */
+
+#__mailguard_banner__,
+[class^="mg-banner"] {
+  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 8px 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.mg-banner__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.mg-banner__pill {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.mg-banner__risk {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.mg-banner__summary {
+  font-size: 12.5px;
+  margin-bottom: 8px;
+  opacity: 0.95;
+}
+
+.mg-banner__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mg-banner__btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: inherit;
+}
+
+.mg-banner__btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+mark.mg-mark {
+  cursor: help;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.25);
+}

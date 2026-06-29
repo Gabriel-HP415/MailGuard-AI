@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="page-auth" content="required" />
+    <title>Dashboard — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <div id="navbar-mount"></div>
+
+    <main class="container my-4">
+      <h1 class="h3 mb-3">Dashboard</h1>
+      <p class="text-muted">Overview of your email scanning activity.</p>
+
+      <section class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+          <div class="mg-stat">
+            <div class="mg-stat__num" id="stat-total">-</div>
+            <div class="mg-stat__label">Predictions (30d)</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="mg-stat">
+            <div class="mg-stat__num" id="stat-high">-</div>
+            <div class="mg-stat__label">High/Critical</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="mg-stat">
+            <div class="mg-stat__num" id="stat-avg">-</div>
+            <div class="mg-stat__label">Avg Risk</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <div class="mg-stat">
+            <div class="mg-stat__num" id="stat-feedback">-</div>
+            <div class="mg-stat__label">Feedback given</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="row g-3 mb-4">
+        <div class="col-lg-6">
+          <div class="card card-mg p-3 h-100">
+            <h5>Distribution by class</h5>
+            <canvas id="chart-class" height="220"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card card-mg p-3 h-100">
+            <h5>Threat levels</h5>
+            <canvas id="chart-threat" height="220"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-mg p-3 mb-4">
+        <h5>Recent predictions</h5>
+        <div class="table-responsive">
+          <table class="table mg-table align-middle">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Class</th>
+                <th>Risk</th>
+                <th>Threat</th>
+                <th>Sender</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recent-table">
+              <tr><td colspan="6" class="mg-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card card-mg p-3 mb-4">
+        <h5>AI Service</h5>
+        <pre id="ai-health" class="mb-0" style="white-space: pre-wrap; font-size: 12px;">Loading…</pre>
+      </section>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/vendor/chart.umd.min.js"></script>
+    <script src="assets/vendor/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+  </body>
+</html>

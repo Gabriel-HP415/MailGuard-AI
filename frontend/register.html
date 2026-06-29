@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register — MailGuard-AI</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/app.css" />
+  </head>
+  <body>
+    <main class="container">
+      <div class="card card-mg mg-auth-card">
+        <h2 class="mb-3">🛡️ Create account</h2>
+        <form id="register-form" autocomplete="on">
+          <div class="mb-3">
+            <label class="form-label">Full name</label>
+            <input type="text" class="form-control" id="full_name" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" required pattern="[a-zA-Z0-9_.-]{3,32}" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" required minlength="8" />
+            <div class="form-text">8 characters minimum.</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Create account</button>
+        </form>
+        <p class="text-center mt-3 mb-0 text-muted">
+          Already have an account? <a href="/login.html">Sign in</a>
+        </p>
+        <div id="error-msg" class="alert alert-danger mt-3" hidden></div>
+      </div>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script>
+      const form = document.getElementById("register-form");
+      const errorMsg = document.getElementById("error-msg");
+      function setError(msg) {
+        if (!msg) { errorMsg.hidden = true; errorMsg.textContent = ""; return; }
+        errorMsg.hidden = false; errorMsg.textContent = msg;
+      }
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setError("");
+        try {
+          const payload = {
+            email: document.getElementById("email").value.trim(),
+            username: document.getElementById("username").value.trim(),
+            password: document.getElementById("password").value,
+            full_name: document.getElementById("full_name").value.trim(),
+          };
+          await api.register(payload);
+          await api.login({ email: payload.email, password: payload.password });
+          window.location.href = "/dashboard.html";
+        } catch (err) {
+          setError(err.message);
+        }
+      });
+    </script>
+  </body>
+</html>
