@@ -14,7 +14,7 @@ from app.core.constants import UserRole
 from app.core.security import decode_access_token
 from app.database.connection import get_db
 from app.models.user import User
-from app.services import firebase_auth_service, user_service
+from app.services import user_service
 
 
 def _extract_bearer(authorization: str | None) -> str:
@@ -67,6 +67,7 @@ async def get_firebase_user(
     Upserts the user into MySQL on first sign-in using Firebase claims.
     """
     token = _extract_bearer(authorization)
+    from app.services import firebase_auth_service
     try:
         claims = await firebase_auth_service.verify_id_token(token)
     except firebase_auth.ExpiredIdTokenError as exc:
