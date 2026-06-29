@@ -15,7 +15,7 @@ export const FIREBASE_CONFIG = Object.freeze({
 // `https://<EXT_ID>.chromiumapp.org/oauth2`. Update this constant whenever
 // you change the Chrome extension ID (e.g. when shipping to production).
 export const OAUTH_CLIENT_ID =
-  "431641720493-5qmmpkg9ccmhbt1nk66jb8tresg5973d.apps.googleusercontent.com";
+  "431641720493-co8nefc95oub7k7gvha196kjl8i7ia6e.apps.googleusercontent.com";
 
 // Scopes requested from Google. Keep minimal — do NOT add gmail.readonly until
 // the OAuth consent screen has been verified by Google.
@@ -25,7 +25,7 @@ export const OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
-export const BACKEND_BASE_URL = "http://localhost:8000";
+export const BACKEND_BASE_URL = "https://mailguard-ai.onrender.com";
 
 // chrome.storage.local keys — keep in sync with backend field names.
 export const STORAGE_KEYS = Object.freeze({

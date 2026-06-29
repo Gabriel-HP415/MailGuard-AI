@@ -1,0 +1,88 @@
+# Render Blueprint for MailGuard-AI backend.
+#
+# Deploy with: dashboard.render.com → New → Blueprint → connect this repo.
+# OR via the Render CLI:
+#   render blueprint launch
+#
+# All secrets are marked `sync: false` so you must paste them in the Render
+# dashboard on first deploy. After that, subsequent deploys won't ask again.
+
+services:
+  - type: web
+    name: mailguard-ai
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+
+    envVars:
+      # ---- General ----
+      - key: APP_NAME
+        value: MailGuard-AI
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: BACKEND_HOST
+        value: 0.0.0.0
+      - key: BACKEND_PORT
+        value: "8000"
+      # The public URL Render assigns. Render injects this automatically.
+      - key: BACKEND_URL
+        value: https://mailguard-ai.onrender.com
+
+      # ---- Database (Supabase Postgres) ----
+      # Paste your Supabase connection string in the Render dashboard.
+      # Example: postgres://postgres:xxxx@db.xxxx.supabase.co:5432/postgres
+      - key: DATABASE_URL
+        sync: false
+
+      # ---- JWT ----
+      # Use a long random string. Generate with:
+      #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+
+      # ---- CORS ----
+      - key: CORS_ORIGINS
+        value: chrome-extension://*,http://localhost:5500,http://localhost:3000
+
+      # ---- Rate limiting ----
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+
+      # ---- AI provider (cloud) ----
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-1.5-flash
+      # Generate at https://aistudio.google.com/app/apikey
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # ---- Firebase ----
+      - key: FIREBASE_ENABLED
+        value: "true"
+      - key: FIREBASE_PROJECT_ID
+        value: mailguard-ai-a7f0a
+      # Render doesn't serve local files in production, so we embed the
+      # service-account JSON as an env var and decode it at startup.
+      # Paste the entire JSON contents on a single line.
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
+      - key: FIREBASE_WEB_API_KEY
+        value: AIzaSyDKmMoGt3dmnpbCtFura-GOx_Hg-8M7--8
+      - key: FIREBASE_OAUTH_CLIENT_ID
+        value: 431641720493-co8nefc95oub7k7gvha196kjl8i7ia6e.apps.googleusercontent.com
+
+      # ---- Logging ----
+      - key: LOG_LEVEL
+        value: INFO

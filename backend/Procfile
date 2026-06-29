@@ -1,0 +1,9 @@
+# Render build & start commands for MailGuard-AI backend
+#
+# This file is referenced by render.yaml. Render runs `pip install -r
+# requirements.txt` automatically before the start command.
+#
+# We use uvicorn directly (not gunicorn) to keep the image small and to
+# match the project's FastAPI lifespan + middleware setup. Render's free
+# tier spins down idle workers, so a single dyno is plenty.
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT

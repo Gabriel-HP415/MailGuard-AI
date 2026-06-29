@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     firebase_enabled: bool = False
     firebase_project_id: str = ""
     firebase_credentials_path: str = "secrets/firebase-service-account.json"
+    firebase_credentials_json: str = ""  # Inline JSON for cloud deployments
     firebase_web_api_key: str = ""  # Public Web API key (Firebase project settings)
     firebase_oauth_client_id: str = ""  # Chrome extension OAuth client (Web application type)
 
@@ -62,10 +63,16 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 120
 
     # ---------- AI Service ----------
+    ai_provider: str = "http"  # "gemini" | "http" | "local"
+    ai_service_url: str = "http://localhost:8001"
     ai_model_dir: str = "../ai_service/models/artifacts"
     active_model_version: str = "auto"
     distilbert_model_name: str = "distilbert-base-uncased"
     max_sequence_length: int = 256
+
+    # ---------- Google Gemini (when AI_PROVIDER=gemini) ----------
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
 
     # ---------- Logging ----------
     log_level: str = "INFO"

@@ -15,7 +15,9 @@ const FIREBASE_IDP_URL = (apiKey) =>
 
 /**
  * Returns the OAuth redirect URL Chrome expects for this extension ID.
- * Always of the form `https://<EXT_ID>.chromiumapp.org/oauth2`.
+ * Always of the form `https://<EXT_ID>.chromiumapp.org/oauth2`. The path is
+ * stable across all extension installs and must be added verbatim to the
+ * OAuth client's authorized redirect URIs.
  */
 export function getRedirectURL() {
   return chrome.identity.getRedirectURL("oauth2");
@@ -44,10 +46,14 @@ export function buildAuthURL(state = "") {
  */
 export async function exchangeCodeForFirebaseToken(code) {
   const redirectUri = getRedirectURL();
+  // Chrome extension OAuth client is a *public* client (no client_secret).
+  // Build the application/x-www-form-urlencoded body the Identity Toolkit
+  // expects, omitting `client_secret` entirely. Per Firebase docs:
+  //   https://firebase.google.com/docs/auth/admin/manage-cookies
+  //   https://developers.google.com/identity/sign-in/web/devconsole-project
   const postBody = new URLSearchParams({
     code,
     client_id: OAUTH_CLIENT_ID,
-    client_secret: "", // Public client (Chrome extension) — leave empty.
     grant_type: "authorization_code",
     redirect_uri: redirectUri,
   }).toString();

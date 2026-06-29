@@ -29,6 +29,7 @@ async def _lifespan(_: FastAPI):
         firebase_auth_service.init_firebase(
             credentials_path=settings.firebase_credentials_path,
             project_id=settings.firebase_project_id,
+            credentials_json=getattr(settings, "firebase_credentials_json", None) or None,
         )
     else:
         logger.info("Firebase authentication disabled (FIREBASE_ENABLED=false)")
@@ -79,6 +80,11 @@ def create_app() -> FastAPI:
             "version": settings.app_version,
             "env": settings.app_env,
         }
+
+    @app.get("/api/v1/health", tags=["System"], include_in_schema=False)
+    async def health_v1():
+        # Mirror of /health at the v1 prefix used by Render's health check.
+        return await health()
 
     @app.get("/", tags=["System"], include_in_schema=False)
     async def root():

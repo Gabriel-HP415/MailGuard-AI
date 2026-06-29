@@ -21,7 +21,7 @@ const STORAGE_KEYS = {
   USER: "mg_user",
 };
 
-const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
+const DEFAULT_BASE_URL = "https://mailguard-ai.onrender.com/api/v1";
 
 class MailGuardAPI {
   constructor() {

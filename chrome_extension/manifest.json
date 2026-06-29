@@ -18,10 +18,11 @@
     "https://identitytoolkit.googleapis.com/*",
     "https://securetoken.googleapis.com/*",
     "https://*.googleusercontent.com/*",
+    "https://mailguard-ai.onrender.com/*",
     "https://mailguard.local/*"
   ],
   "oauth2": {
-    "client_id": "431641720493-5qmmpkg9ccmhbt1nk66jb8tresg5973d.apps.googleusercontent.com",
+    "client_id": "431641720493-co8nefc95oub7k7gvha196kjl8i7ia6e.apps.googleusercontent.com",
     "scopes": [
       "openid",
       "https://www.googleapis.com/auth/userinfo.email",
