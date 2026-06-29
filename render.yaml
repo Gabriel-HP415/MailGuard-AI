@@ -4,26 +4,24 @@
 # OR via the Render CLI:
 #   render blueprint launch
 #
+# We use a Dockerfile (see backend/Dockerfile) so the Python version is
+# pinned to 3.11 — Render's native Python runtime defaults to 3.14, which
+# has no prebuilt wheels for pydantic-core / bcrypt yet.
+#
 # All secrets are marked `sync: false` so you must paste them in the Render
 # dashboard on first deploy. After that, subsequent deploys won't ask again.
 
 services:
   - type: web
     name: mailguard-ai
-    runtime: python
+    runtime: docker
     plan: free
     region: oregon
     rootDir: backend
-    # Pin Python 3.11 because pydantic-core, bcrypt, and several other wheels
-    # don't yet have prebuilt binaries for Python 3.14.
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/v1/health
     autoDeploy: true
-
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.11
 
     envVars:
       # ---- General ----
@@ -37,7 +35,7 @@ services:
         value: 0.0.0.0
       - key: BACKEND_PORT
         value: "8000"
-      # The public URL Render assigns. Render injects this automatically.
+      # The public URL Render assigns. Update this after first deploy if needed.
       - key: BACKEND_URL
         value: https://mailguard-ai.onrender.com
 

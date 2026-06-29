@@ -1,0 +1,24 @@
+# MailGuard-AI — Render ignore patterns
+#
+# Render builds from the repo root. Exclude dev artifacts, virtualenvs, and
+# the AI service subproject (not needed for the cloud API).
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+ai_service/
+frontend/
+chrome_extension/
+node_modules
+*.log
+.env
+.env.*
+!.env.example
+.idea
+.vscode
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
