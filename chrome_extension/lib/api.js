@@ -161,8 +161,21 @@ class MailGuardAPI {
   }
 }
 
-// Singleton instance shared across content scripts.
+// Singleton instance shared across content scripts, the popup, and the
+// background service worker. We export it via ES modules and also attach
+// it to the available global object so non-module scripts can use it too.
 const api = new MailGuardAPI();
+export { api };
+export default api;
+
+// Expose to `window` for content scripts / popup / options (classic scripts).
 if (typeof window !== "undefined") {
   window.MailGuardAPI = api;
+}
+// Expose to `self` / `globalThis` for the service worker + popup.
+else if (typeof self !== "undefined") {
+  self.MailGuardAPI = api;
+}
+else if (typeof globalThis !== "undefined") {
+  globalThis.MailGuardAPI = api;
 }

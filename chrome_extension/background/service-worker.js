@@ -1,5 +1,8 @@
 /**
- * MailGuard-AI — Background service worker.
+ * MailGuard-AI — Background service worker (ES module).
+ *
+ * Loaded as a module via manifest.json's `"type": "module"`. Therefore we
+ * use static `import` (NOT `importScripts`) for the API singleton.
  *
  * Responsibilities:
  *  - Handle the popup / options page actions (login, logout, save settings).
@@ -7,7 +10,7 @@
  *  - Expose a lightweight messaging API to content scripts.
  */
 
-importScripts("../lib/api.js");
+import { api } from "../lib/api.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log("[MailGuard-AI] Extension installed.");
@@ -16,7 +19,6 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     try {
-      const api = window.MailGuardAPI || (await import("../lib/api.js")).api;
       if (message.type === "ping") {
         sendResponse({ ok: true });
         return;
@@ -53,5 +55,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: false, error: err.message });
     }
   })();
-  return true; // async response
+  // Returning true keeps the message channel open for the async response.
+  return true;
 });

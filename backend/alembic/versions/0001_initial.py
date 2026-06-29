@@ -4,7 +4,7 @@ Revision ID: 0001_initial
 Revises:
 Create Date: 2026-06-29 21:30:00.000000
 
-Creates all 8 tables for MailGuard-AI. Mirrors database/schema.sql.
+Creates all 8 tables for MailGuard-AI (the canonical schema).
 """
 
 from alembic import op
