@@ -25,7 +25,7 @@ export const OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
-export const BACKEND_BASE_URL = "https://mailguard-ai.onrender.com";
+export const BACKEND_BASE_URL = "https://mailguard-ai-y0nh.onrender.com";
 
 // chrome.storage.local keys — keep in sync with backend field names.
 export const STORAGE_KEYS = Object.freeze({

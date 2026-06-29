@@ -18,7 +18,7 @@
     "https://identitytoolkit.googleapis.com/*",
     "https://securetoken.googleapis.com/*",
     "https://*.googleusercontent.com/*",
-    "https://mailguard-ai.onrender.com/*",
+    "https://mailguard-ai-y0nh.onrender.com/*",
     "https://mailguard.local/*"
   ],
   "oauth2": {

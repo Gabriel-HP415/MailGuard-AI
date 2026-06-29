@@ -37,9 +37,11 @@ services:
         value: 0.0.0.0
       - key: BACKEND_PORT
         value: "8000"
-      # The public URL Render assigns. Update this after first deploy if needed.
+      # The public URL Render assigned to this service. Render picked
+      # `mailguard-ai-y0nh.onrender.com` on creation.
+      # If you ever delete and recreate the service, update this accordingly.
       - key: BACKEND_URL
-        value: https://mailguard-ai.onrender.com
+        value: https://mailguard-ai-y0nh.onrender.com
 
       # ---- Database (Supabase Postgres) ----
       # Paste your Supabase connection string in the Render dashboard.

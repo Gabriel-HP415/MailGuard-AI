@@ -78,7 +78,7 @@
 
   // Save base URL on blur
   baseUrlInput.addEventListener("change", async () => {
-    const url = baseUrlInput.value.trim() || "https://mailguard-ai.onrender.com/api/v1";
+    const url = baseUrlInput.value.trim() || "https://mailguard-ai-y0nh.onrender.com/api/v1";
     await api.saveConfig({ baseUrl: url });
     setAuthStatus(`Backend URL saved: ${url}`, true);
   });
