@@ -13,6 +13,7 @@ from app.api.errors import register_exception_handlers
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.middleware import RateLimitMiddleware, RequestLoggingMiddleware
+from app.services import firebase_auth as firebase_auth_service
 
 logging.basicConfig(
     level=settings.log_level,
@@ -24,6 +25,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
     logger.info("MailGuard-AI backend starting (env=%s)", settings.app_env)
+    if settings.firebase_enabled:
+        firebase_auth_service.init_firebase(
+            credentials_path=settings.firebase_credentials_path,
+            project_id=settings.firebase_project_id,
+        )
+    else:
+        logger.info("Firebase authentication disabled (FIREBASE_ENABLED=false)")
     yield
     logger.info("MailGuard-AI backend shutting down")
 

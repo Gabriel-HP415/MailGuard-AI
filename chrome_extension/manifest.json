@@ -1,19 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "MailGuard-AI",
+  "name": "__MSG_extension_name__",
   "version": "1.0.0",
-  "description": "Detect phishing, scam and spam emails in real-time using AI.",
+  "description": "__MSG_extension_description__",
   "default_locale": "en",
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "identity",
+    "identity.email"
   ],
   "host_permissions": [
     "https://mail.google.com/*",
+    "https://accounts.google.com/*",
+    "https://identitytoolkit.googleapis.com/*",
+    "https://securetoken.googleapis.com/*",
+    "https://*.googleusercontent.com/*",
     "https://mailguard.local/*"
   ],
+  "oauth2": {
+    "client_id": "431641720493-5qmmpkg9ccmhbt1nk66jb8tresg5973d.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
@@ -39,7 +53,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "MailGuard-AI"
+    "default_title": "__MSG_popup_title__"
   },
   "options_ui": {
     "page": "options/options.html",

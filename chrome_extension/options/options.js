@@ -6,6 +6,7 @@
 (async function initOptions() {
   const api = window.MailGuardAPI || (await import("../lib/api.js")).api;
   await api.loadConfig();
+  const firebaseAuth = await import("../lib/firebase.js");
 
   const authPill = document.getElementById("auth-pill");
   const baseUrlInput = document.getElementById("base-url");
@@ -14,6 +15,14 @@
   const authStatus = document.getElementById("auth-status");
   const authForm = document.getElementById("auth-form");
   const logoutBtn = document.getElementById("logout-btn");
+
+  const profileCard = document.getElementById("profile-card");
+  const profileAvatar = document.getElementById("profile-avatar");
+  const profileName = document.getElementById("profile-name");
+  const profileEmail = document.getElementById("profile-email");
+  const profileProvider = document.getElementById("profile-provider");
+  const googleSignInBtn = document.getElementById("google-signin-btn");
+  const firebaseSignOutBtn = document.getElementById("firebase-signout-btn");
 
   const whitelistForm = document.getElementById("whitelist-form");
   const blacklistForm = document.getElementById("blacklist-form");
@@ -27,6 +36,26 @@
   function setAuthStatus(text, ok = false) {
     authStatus.textContent = text;
     authStatus.style.color = ok ? "var(--success)" : "var(--danger)";
+  }
+
+  async function refreshProfile() {
+    const profile = await firebaseAuth.getCurrentUser();
+    const signedIn = await firebaseAuth.isSignedIn();
+    if (!signedIn) {
+      profileCard.hidden = true;
+      return;
+    }
+    profileCard.hidden = false;
+    profileName.textContent = profile.firebase_display_name || "Google user";
+    profileEmail.textContent = profile.firebase_email || "";
+    profileProvider.textContent = "Signed in with Google";
+    if (profile.firebase_photo_url) {
+      profileAvatar.src = profile.firebase_photo_url;
+      profileAvatar.style.display = "";
+    } else {
+      profileAvatar.removeAttribute("src");
+      profileAvatar.style.display = "none";
+    }
   }
 
   async function refreshAuth() {
@@ -80,9 +109,37 @@
     }
   });
 
+  googleSignInBtn.addEventListener("click", async () => {
+    setAuthStatus("Opening Google sign-in…");
+    googleSignInBtn.disabled = true;
+    try {
+      const profile = await firebaseAuth.signInWithGoogle();
+      await chrome.runtime.sendMessage({ type: "firebase_signed_in", payload: profile });
+      await refreshAuth();
+      await refreshProfile();
+      await Promise.all([loadWhitelist(), loadBlacklist(), loadServiceStatus()]);
+      setAuthStatus(`Signed in as ${profile.email}`, true);
+    } catch (err) {
+      setAuthStatus(`Error: ${err.message}`);
+    } finally {
+      googleSignInBtn.disabled = false;
+    }
+  });
+
+  firebaseSignOutBtn.addEventListener("click", async () => {
+    await chrome.runtime.sendMessage({ type: "logout" });
+    await firebaseAuth.signOut();
+    await refreshAuth();
+    await refreshProfile();
+    whitelistList.innerHTML = '<li class="mg-options__empty">Sign in to manage lists.</li>';
+    blacklistList.innerHTML = '<li class="mg-options__empty">Sign in to manage lists.</li>';
+    setAuthStatus("Signed out.");
+  });
+
   logoutBtn.addEventListener("click", async () => {
     await chrome.runtime.sendMessage({ type: "logout" });
     await refreshAuth();
+    await refreshProfile();
     whitelistList.innerHTML = '<li class="mg-options__empty">Sign in to manage lists.</li>';
     blacklistList.innerHTML = '<li class="mg-options__empty">Sign in to manage lists.</li>';
   });
@@ -220,6 +277,7 @@
   }
 
   await refreshAuth();
+  await refreshProfile();
   await loadWhitelist();
   await loadBlacklist();
   await loadServiceStatus();

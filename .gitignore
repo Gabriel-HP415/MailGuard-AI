@@ -33,6 +33,11 @@ Thumbs.db
 .env.*.local
 *.env
 
+# Secrets — Firebase service account, OAuth secrets, etc.
+secrets/
+*.service-account.json
+firebase-adminsdk-*.json
+
 # Database
 *.db
 *.sqlite

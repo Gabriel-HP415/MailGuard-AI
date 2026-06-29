@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440
 
+    # ---------- Firebase Authentication (Chrome extension sign-in) ----------
+    firebase_enabled: bool = False
+    firebase_project_id: str = ""
+    firebase_credentials_path: str = "secrets/firebase-service-account.json"
+    firebase_web_api_key: str = ""  # Public Web API key (Firebase project settings)
+    firebase_oauth_client_id: str = ""  # Chrome extension OAuth client (Web application type)
+
     # ---------- CORS ----------
     cors_origins: List[str] = Field(
         default=[

@@ -18,6 +18,7 @@ Hệ thống phân loại email thành 4 nhóm: **Bình thường – Thông bá
 | Cơ sở dữ liệu | MySQL 8 |
 | Dashboard | HTML/CSS, Bootstrap 5, Chart.js |
 | Triển khai | Docker, docker-compose |
+| Xác thực (Extension) | Firebase Authentication + Google OAuth (chrome.identity) |
 
 ---
 
@@ -31,9 +32,10 @@ Chrome Extension  ──►  FastAPI Backend  ──►  AI Service (ML + XAI)
 ```
 
 - **Chrome Extension**: đọc email Gmail, gửi nội dung lên Backend, hiển thị cảnh báo ngay trong Gmail.
-- **Backend API**: xác thực người dùng (JWT), nhận email, gọi AI Service, lưu lịch sử và phản hồi.
+- **Backend API**: xác thực người dùng (JWT nội bộ + Firebase ID token), nhận email, gọi AI Service, lưu lịch sử và phản hồi.
 - **AI Service**: tiền xử lý văn bản, trích chọn đặc trưng, phân loại, giải thích và tính điểm rủi ro.
 - **MySQL**: lưu người dùng, lịch sử dự đoán, phản hồi, whitelist/blacklist, phiên bản mô hình.
+- **Firebase Authentication**: extension dùng `chrome.identity` để chạy OAuth Google, đổi `code` lấy Firebase ID token rồi gửi lên Backend (`POST /api/v1/auth/firebase/login`). Backend verify bằng `firebase-admin`, upsert user vào MySQL, cấp JWT nội bộ.
 
 ---
 

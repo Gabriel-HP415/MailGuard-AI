@@ -1,16 +1,24 @@
 /**
  * MailGuard-AI — Popup logic.
  * Connects to the API singleton and renders dashboard / login form.
+ *
+ * Supports two sign-in methods:
+ *   - "Sign in with Google"  → chrome.identity OAuth → Firebase ID token →
+ *                              POST /api/v1/auth/firebase/login → backend JWT
+ *   - email/password         → POST /api/v1/auth/login (legacy / dev only)
  */
 
 (async function initPopup() {
   const api = window.MailGuardAPI || (await import("../lib/api.js")).api;
   await api.loadConfig();
+  const firebaseAuth = await import("../lib/firebase.js");
 
   const authSection = document.getElementById("auth-section");
   const dashSection = document.getElementById("dashboard-section");
   const statusPill = document.getElementById("status-pill");
   const userName = document.getElementById("user-name");
+  const userEmail = document.getElementById("user-email");
+  const userAvatar = document.getElementById("user-avatar");
   const statTotal = document.getElementById("stat-total");
   const statRisks = document.getElementById("stat-risks");
   const statAvg = document.getElementById("stat-avg");
@@ -20,6 +28,7 @@
   const openOptions = document.getElementById("open-options");
   const openRegister = document.getElementById("open-register");
   const logoutBtn = document.getElementById("logout-btn");
+  const googleSignInBtn = document.getElementById("google-signin-btn");
 
   function setError(msg) {
     if (!msg) {
@@ -29,6 +38,20 @@
     }
     errorMsg.hidden = false;
     errorMsg.textContent = msg;
+  }
+
+  function setBusy(button, busy, busyLabel) {
+    if (!button) return;
+    if (busy) {
+      button.disabled = true;
+      button.dataset.originalLabel = button.dataset.originalLabel || button.textContent;
+      button.textContent = busyLabel || "Please wait…";
+    } else {
+      button.disabled = false;
+      if (button.dataset.originalLabel) {
+        button.textContent = button.dataset.originalLabel;
+      }
+    }
   }
 
   async function refreshStatus() {
@@ -44,8 +67,19 @@
     if (status.authenticated) {
       authSection.hidden = true;
       dashSection.hidden = false;
-      userName.textContent =
-        status.user?.full_name || status.user?.username || "user";
+      const profile = await firebaseAuth.getCurrentUser();
+      const name =
+        status.user?.full_name || status.user?.username || profile.firebase_display_name || "user";
+      userName.textContent = name;
+      userEmail.textContent = status.user?.email || profile.firebase_email || "";
+      const photoUrl = profile.firebase_photo_url || status.user?.avatar_url || "";
+      if (photoUrl) {
+        userAvatar.src = photoUrl;
+        userAvatar.style.display = "";
+      } else {
+        userAvatar.removeAttribute("src");
+        userAvatar.style.display = "none";
+      }
       await loadStats();
       await loadRecent();
     } else {
@@ -103,6 +137,7 @@
     setError("");
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    setBusy(loginForm.querySelector("button"), true, "Signing in…");
     try {
       await chrome.runtime.sendMessage({
         type: "login",
@@ -111,6 +146,24 @@
       await refreshStatus();
     } catch (err) {
       setError(err.message || "Login failed");
+    } finally {
+      setBusy(loginForm.querySelector("button"), false);
+    }
+  });
+
+  googleSignInBtn.addEventListener("click", async () => {
+    setError("");
+    setBusy(googleSignInBtn, true, "Opening Google sign-in…");
+    try {
+      const profile = await firebaseAuth.signInWithGoogle();
+      // Notify background service worker so it can update its in-memory state.
+      await chrome.runtime.sendMessage({ type: "firebase_signed_in", payload: profile });
+      await refreshStatus();
+    } catch (err) {
+      console.error("Google sign-in failed", err);
+      setError(err.message || "Google sign-in failed");
+    } finally {
+      setBusy(googleSignInBtn, false);
     }
   });
 
@@ -122,8 +175,14 @@
   openOptions.addEventListener("click", () => chrome.runtime.openOptionsPage());
 
   logoutBtn.addEventListener("click", async () => {
-    await chrome.runtime.sendMessage({ type: "logout" });
-    await refreshStatus();
+    setBusy(logoutBtn, true, "Signing out…");
+    try {
+      await chrome.runtime.sendMessage({ type: "logout" });
+      await firebaseAuth.signOut();
+      await refreshStatus();
+    } finally {
+      setBusy(logoutBtn, false);
+    }
   });
 
   function escapeHtml(s) {

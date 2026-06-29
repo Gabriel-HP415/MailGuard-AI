@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, Header
+from firebase_admin import auth as firebase_auth
 from jose import JWTError
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,7 @@ from app.core.constants import UserRole
 from app.core.security import decode_access_token
 from app.database.connection import get_db
 from app.models.user import User
-from app.services import user_service
+from app.services import firebase_auth_service, user_service
 
 
 def _extract_bearer(authorization: str | None) -> str:
@@ -55,3 +56,77 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.ADMIN:
         raise ForbiddenError("Admin privileges required")
     return current_user
+
+
+async def get_firebase_user(
+    authorization: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+) -> User:
+    """Resolve a Firebase ID token (Authorization: Bearer <ID_TOKEN>) to a User.
+
+    Upserts the user into MySQL on first sign-in using Firebase claims.
+    """
+    token = _extract_bearer(authorization)
+    try:
+        claims = await firebase_auth_service.verify_id_token(token)
+    except firebase_auth.ExpiredIdTokenError as exc:
+        raise UnauthorizedError("Firebase ID token has expired") from exc
+    except firebase_auth.RevokedIdTokenError as exc:
+        raise UnauthorizedError("Firebase ID token has been revoked") from exc
+    except firebase_auth.InvalidIdTokenError as exc:
+        raise UnauthorizedError(f"Invalid Firebase ID token: {exc}") from exc
+    except Exception as exc:
+        raise UnauthorizedError(f"Firebase verification failed: {exc}") from exc
+
+    user = await _resolve_firebase_user(db, claims)
+    return user
+
+
+async def _resolve_firebase_user(db: Session, claims: dict) -> User:
+    """Find the user by firebase_uid, upsert if first time, link by email otherwise."""
+    firebase_uid: str = claims["uid"]
+    email: str | None = claims.get("email")
+    name: str | None = claims.get("name")
+    picture: str | None = claims.get("picture")
+
+    user = user_service.get_by_firebase_uid(db, firebase_uid)
+    if user is not None:
+        # Refresh profile fields opportunistically.
+        updated = False
+        if name and user.full_name != name:
+            user.full_name = name
+            updated = True
+        if picture and user.avatar_url != picture:
+            user.avatar_url = picture
+            updated = True
+        if not user.is_verified and claims.get("email_verified"):
+            user.is_verified = True
+            updated = True
+        if updated:
+            db.commit()
+            db.refresh(user)
+        return user
+
+    # Fallback: link by email if Firebase user already exists with local password.
+    if email:
+        user = user_service.get_by_email(db, email)
+        if user is not None:
+            user.firebase_uid = firebase_uid
+            user.auth_provider = "google"
+            if picture and not user.avatar_url:
+                user.avatar_url = picture
+            if not user.is_verified and claims.get("email_verified"):
+                user.is_verified = True
+            db.commit()
+            db.refresh(user)
+            return user
+
+    user = user_service.create_firebase_user(
+        db,
+        firebase_uid=firebase_uid,
+        email=email,
+        full_name=name,
+        avatar_url=picture,
+        email_verified=bool(claims.get("email_verified")),
+    )
+    return user

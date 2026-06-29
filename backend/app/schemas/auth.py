@@ -45,5 +45,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     avatar_url: Optional[str] = None
+    auth_provider: Optional[str] = None
+    firebase_uid: Optional[str] = None
     last_login_at: Optional[datetime] = None
     created_at: datetime

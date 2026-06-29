@@ -6,7 +6,14 @@
  *  - Base URL config
  *  - Fetch with JSON + error handling
  *  - Helpful error messages for the UI layer
+ *
+ * Auth flow:
+ *   signInWithGoogle() (lib/firebase.js) → exchanges Firebase ID token for our
+ *   own JWT at POST /api/v1/auth/firebase/login. Subsequent requests use
+ *   that JWT via Authorization: Bearer.
  */
+
+import { getBackendToken } from "./firebase.js";
 
 const STORAGE_KEYS = {
   BASE_URL: "mg_base_url",
@@ -59,8 +66,20 @@ class MailGuardAPI {
   async _request(path, { method = "GET", body = null, auth = true } = {}) {
     const url = `${this.baseUrl}${path}`;
     const headers = { "Content-Type": "application/json" };
-    if (auth && this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+    if (auth) {
+      // Prefer the backend JWT (issued by /auth/firebase/login); fall back
+      // to the cached token in case Firebase auth hasn't been wired up yet
+      // (legacy local-dev login flow).
+      let token = this.token;
+      if (!token) {
+        try {
+          token = await getBackendToken();
+        } catch {
+          // No Firebase session; let the request go without a token —
+          // public endpoints (register/login) handle their own auth.
+        }
+      }
+      if (token) headers["Authorization"] = `Bearer ${token}`;
     }
     const opts = { method, headers };
     if (body !== null) opts.body = JSON.stringify(body);

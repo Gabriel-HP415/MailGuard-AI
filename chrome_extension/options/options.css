@@ -129,6 +129,60 @@ input[type="text"] {
   background: var(--primary-dark);
 }
 
+.mg-btn--google {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid var(--border);
+  flex: 1;
+}
+
+.mg-btn--google:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.mg-btn--google:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.mg-options__profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mg-options__profile img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.mg-options__profile-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.mg-options__profile-email {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mg-options__profile-provider {
+  font-size: 11px;
+  color: var(--primary);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .mg-btn--danger {
   background: var(--danger);
   color: #fff;

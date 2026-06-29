@@ -37,6 +37,15 @@ class User(Base, TimestampMixin):
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     last_login_at: Mapped[Optional[object]] = mapped_column(DateTime, nullable=True)
 
+    # ---------- Firebase Auth (Chrome extension sign-in) ----------
+    # `password_hash` is empty string for Firebase-only users.
+    firebase_uid: Mapped[Optional[str]] = mapped_column(
+        String(128), unique=True, nullable=True, index=True
+    )
+    auth_provider: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=False, default="local", server_default="local"
+    )
+
     # Relationships
     emails: Mapped[list["Email"]] = relationship(
         "Email", back_populates="user", cascade="all, delete-orphan"

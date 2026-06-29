@@ -137,6 +137,67 @@ input[type="text"] {
   background: var(--primary-dark);
 }
 
+.mg-btn--google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.mg-btn--google:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.mg-btn--google:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.mg-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mg-divider::before,
+.mg-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.mg-popup__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mg-popup__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.mg-popup__user-email {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .mg-btn--danger {
   background: var(--danger);
   color: #fff;

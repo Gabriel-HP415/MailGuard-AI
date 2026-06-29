@@ -1,0 +1,14 @@
+{
+  "extension_name": {
+    "message": "MailGuard-AI",
+    "description": "The display name of the extension."
+  },
+  "extension_description": {
+    "message": "Detect phishing, scam and spam emails in real-time using AI.",
+    "description": "The user-visible description of the extension."
+  },
+  "popup_title": {
+    "message": "MailGuard-AI",
+    "description": "Tooltip / title for the toolbar action."
+  }
+}
