@@ -21,7 +21,7 @@ from app.core.security import create_access_token
 from app.database.connection import get_db
 from app.models.user import User
 from app.schemas.auth import TokenResponse, UserResponse
-from app.services import activity_log_service, firebase_auth_service, user_service
+from app.services import activity_log_service, firebase_auth as firebase_auth_service, user_service
 
 router = APIRouter()
 
