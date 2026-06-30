@@ -161,7 +161,7 @@
       await refreshStatus();
     } catch (err) {
       console.error("Google sign-in failed", err);
-      setError(err.message || "Google sign-in failed");
+      setError(formatAuthError(err));
     } finally {
       setBusy(googleSignInBtn, false);
     }
@@ -189,6 +189,26 @@
     return String(s).replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
     );
+  }
+
+  function formatAuthError(err) {
+    const msg = String(err && err.message ? err.message : err || "Unknown error");
+    if (/cancel|approve|denied/i.test(msg)) {
+      return "Google sign-in was cancelled. If the popup warned about an unverified app, try again or use email/password below.";
+    }
+    if (/Firebase refused|UNREGISTERED_IDP|OPERATION_NOT_ALLOWED/i.test(msg)) {
+      return "Google sign-in is not enabled for this Firebase project. Enable it in Firebase Console → Authentication → Sign-in method, then retry.";
+    }
+    if (/Backend login failed/i.test(msg)) {
+      return "Backend rejected the Firebase token. Check FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY in backend .env.";
+    }
+    if (/chrome.identity error/i.test(msg)) {
+      return "Chrome could not complete Google sign-in: " + msg.replace(/^chrome.identity error:\s*/, "");
+    }
+    if (/Network|Failed to fetch/i.test(msg)) {
+      return "Network error talking to Google / Firebase. Check your internet connection.";
+    }
+    return msg;
   }
 
   await refreshStatus();

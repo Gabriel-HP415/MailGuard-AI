@@ -5,25 +5,29 @@
 // the resulting session in chrome.storage.local. The backend issues its own
 // JWT after we POST the Firebase ID token to /api/v1/auth/firebase/login.
 
-import { BACKEND_BASE_URL, FIREBASE_CONFIG, STORAGE_KEYS } from "./firebase-config.js";
+import {
+  BACKEND_BASE_URL,
+  FIREBASE_CONFIG,
+  STORAGE_KEYS,
+} from "./firebase-config.js";
 import {
   exchangeAccessTokenForFirebaseToken,
   getGoogleAccessToken,
   refreshFirebaseToken as refreshFirebaseIdToken,
-  revokeGoogleAccessToken,
+  signOut as signOutOauth,
 } from "./oauth.js";
 
 const STORAGE = chrome.storage.local;
 
-async function readStorage(keys) {
+function readStorage(keys) {
   return new Promise((resolve) => STORAGE.get(keys, resolve));
 }
 
-async function writeStorage(values) {
+function writeStorage(values) {
   return new Promise((resolve) => STORAGE.set(values, resolve));
 }
 
-async function clearStorage(keys) {
+function clearStorage(keys) {
   return new Promise((resolve) => STORAGE.remove(keys, resolve));
 }
 
@@ -55,21 +59,32 @@ async function ensureFreshIdToken() {
   ]);
   const idToken = stored[STORAGE_KEYS.ID_TOKEN];
   const refreshToken = stored[STORAGE_KEYS.REFRESH_TOKEN];
+
   if (await isIdTokenFresh(idToken)) {
     return { idToken, refreshed: false };
   }
   if (!refreshToken) {
     throw new Error("No Firebase refresh token; user must sign in again");
   }
-  const refreshed = await refreshFirebaseIdToken({
-    apiKey: FIREBASE_CONFIG.apiKey,
-    refreshToken,
-  });
-  await writeStorage({
-    [STORAGE_KEYS.ID_TOKEN]: refreshed.idToken,
-    [STORAGE_KEYS.REFRESH_TOKEN]: refreshed.refreshToken,
-  });
-  return { idToken: refreshed.idToken, refreshed: true };
+  try {
+    const refreshed = await refreshFirebaseIdToken({
+      apiKey: FIREBASE_CONFIG.apiKey,
+      refreshToken,
+    });
+    await writeStorage({
+      [STORAGE_KEYS.ID_TOKEN]: refreshed.idToken,
+      [STORAGE_KEYS.REFRESH_TOKEN]: refreshed.refreshToken,
+    });
+    return { idToken: refreshed.idToken, refreshed: true };
+  } catch (err) {
+    // Refresh token revoked or expired — force re-auth.
+    await clearStorage(Object.values(STORAGE_KEYS));
+    throw new Error(
+      "Firebase session expired. Please sign in again. (" +
+        (err.message || "refresh failed") +
+        ")",
+    );
+  }
 }
 
 async function exchangeForBackendToken(firebaseIdToken) {
@@ -87,14 +102,25 @@ async function exchangeForBackendToken(firebaseIdToken) {
 
 /**
  * Trigger the Google sign-in flow, persist Firebase tokens, exchange for
- * the backend JWT, and return the user profile.
+ * the backend JWT, and return the user profile + tokens.
  */
 export async function signInWithGoogle() {
-  const googleAccessToken = await getGoogleAccessToken({ interactive: true });
-  const firebaseTokens = await exchangeAccessTokenForFirebaseToken({
-    apiKey: FIREBASE_CONFIG.apiKey,
-    accessToken: googleAccessToken,
-  });
+  let googleAccessToken;
+  try {
+    googleAccessToken = await getGoogleAccessToken({ forceFresh: true });
+  } catch (err) {
+    throw err;
+  }
+
+  let firebaseTokens;
+  try {
+    firebaseTokens = await exchangeAccessTokenForFirebaseToken({
+      apiKey: FIREBASE_CONFIG.apiKey,
+      accessToken: googleAccessToken,
+    });
+  } catch (err) {
+    throw err;
+  }
 
   await writeStorage({
     [STORAGE_KEYS.ID_TOKEN]: firebaseTokens.idToken,
@@ -104,6 +130,7 @@ export async function signInWithGoogle() {
     [STORAGE_KEYS.DISPLAY_NAME]: firebaseTokens.displayName || "",
     [STORAGE_KEYS.PHOTO_URL]: firebaseTokens.photoUrl || "",
     [STORAGE_KEYS.SIGNED_IN_AT]: Date.now(),
+    google_access_token: googleAccessToken,
   });
 
   const backendToken = await exchangeForBackendToken(firebaseTokens.idToken);
@@ -181,11 +208,13 @@ export async function isSignedIn() {
 
 export async function signOut() {
   const stored = await readStorage(["google_access_token"]);
-  if (stored.google_access_token) {
-    await revokeGoogleAccessToken(stored.google_access_token);
+  try {
+    await signOutOauth({
+      apiKey: FIREBASE_CONFIG.apiKey,
+      googleAccessToken: stored.google_access_token,
+    });
+  } catch (err) {
+    console.warn("signOutOauth error:", err);
   }
-  await clearStorage([
-    ...Object.values(STORAGE_KEYS),
-    "google_access_token",
-  ]);
+  await clearStorage([...Object.values(STORAGE_KEYS), "google_access_token"]);
 }
