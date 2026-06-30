@@ -196,14 +196,23 @@
     if (/cancel|approve|denied/i.test(msg)) {
       return "Google sign-in was cancelled. If the popup warned about an unverified app, try again or use email/password below.";
     }
+    if (/invalid.*client|oauth.*client.*id|unregistered/i.test(msg)) {
+      return "OAuth client mismatch. Check FIREBASE_OAUTH_CLIENT_ID in backend .env matches the Web OAuth client in Google Cloud Console (project: mailguard-ai-2).";
+    }
     if (/Firebase refused|UNREGISTERED_IDP|OPERATION_NOT_ALLOWED/i.test(msg)) {
       return "Google sign-in is not enabled for this Firebase project. Enable it in Firebase Console → Authentication → Sign-in method, then retry.";
+    }
+    if (/Both OAuth flows failed/i.test(msg)) {
+      return "Both Google OAuth flows failed. Make sure the Web OAuth client exists in Cloud Console and the consent screen lists your email as a test user.";
+    }
+    if (/redirect_uri/i.test(msg)) {
+      return "OAuth redirect URI mismatch. Add https://dfmiohjepkicjcjdfakggiaikkohcfle.chromiumapp.org/oauth2 to the Web OAuth client's Authorized redirect URIs.";
     }
     if (/Backend login failed/i.test(msg)) {
       return "Backend rejected the Firebase token. Check FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY in backend .env.";
     }
-    if (/chrome.identity error/i.test(msg)) {
-      return "Chrome could not complete Google sign-in: " + msg.replace(/^chrome.identity error:\s*/, "");
+    if (/chrome.identity error|Token exchange failed|invalid_grant/i.test(msg)) {
+      return "Chrome / Google rejected the OAuth exchange: " + msg;
     }
     if (/Network|Failed to fetch/i.test(msg)) {
       return "Network error talking to Google / Firebase. Check your internet connection.";

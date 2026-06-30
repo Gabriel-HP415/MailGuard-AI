@@ -25,6 +25,14 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
+  "oauth2": {
+    "client_id": "1022955855604-u0c7pfuaa7el5qukmhiq5778rsaug5tj.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
