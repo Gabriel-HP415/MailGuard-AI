@@ -6,16 +6,16 @@
 // verifying the ID token via firebase-admin.
 
 export const FIREBASE_CONFIG = Object.freeze({
-  apiKey: "AIzaSyDKmMoGt3dmnpbCtFura-GOx_Hg-8M7--8",
-  authDomain: "mailguard-ai-a7f0a.firebaseapp.com",
-  projectId: "mailguard-ai-a7f0a",
+  apiKey: "AIzaSyAVIdVtylKmq_HgWeBY97819qhcU4NUzwE",
+  authDomain: "mailguard-ai-2.firebaseapp.com",
+  projectId: "mailguard-ai-2",
 });
 
 // OAuth client registered as a Web application whose redirect URI matches
 // `https://<EXT_ID>.chromiumapp.org/oauth2`. Update this constant whenever
 // you change the Chrome extension ID (e.g. when shipping to production).
 export const OAUTH_CLIENT_ID =
-  "431641720493-co8nefc95oub7k7gvha196kjl8i7ia6e.apps.googleusercontent.com";
+  "1022955855604-u0c7pfuaa7el5qukmhiq5778rsaug5tj.apps.googleusercontent.com";
 
 // Scopes requested from Google. Keep minimal — do NOT add gmail.readonly until
 // the OAuth consent screen has been verified by Google.

@@ -1,84 +1,80 @@
 // ============================================
 // MailGuard-AI — Google OAuth via chrome.identity
 // ============================================
-// Runs the Authorization Code flow against Google's OAuth endpoint using
-// chrome.identity.launchWebAuthFlow, then exchanges the resulting code for a
+// Uses `chrome.identity.getAuthToken` (Chrome's built-in OAuth flow for
+// extensions) to obtain a Google OAuth2 access token, then exchanges it for a
 // Firebase ID token via the Identity Toolkit REST API.
 //
-// Reference: https://developer.chrome.com/docs/extensions/reference/api/identity#method-launchWebAuthFlow
+// Reference: https://developer.chrome.com/docs/extensions/reference/api/identity
+// Reference: https://firebase.google.com/docs/reference/rest/auth#section-signinwithidp
 
-import { FIREBASE_CONFIG, OAUTH_CLIENT_ID, OAUTH_SCOPES } from "./firebase-config.js";
-
-const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
-const FIREBASE_IDP_URL = (apiKey) =>
+const FIREBASE_IDP_URL = (apiKey, providerId) =>
   `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${apiKey}`;
 
 /**
- * Returns the OAuth redirect URL Chrome expects for this extension ID.
- * Always of the form `https://<EXT_ID>.chromiumapp.org/oauth2`. The path is
- * stable across all extension installs and must be added verbatim to the
- * OAuth client's authorized redirect URIs.
+ * Acquire a Google OAuth2 access token via the Chrome Identity API.
+ *
+ * Chrome shows a native account picker when needed (silent otherwise). The
+ * token is cached by Chrome and revoked on signOut().
  */
-export function getRedirectURL() {
-  return chrome.identity.getRedirectURL("oauth2");
+export async function getGoogleAccessToken({ interactive = true } = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive }, (token) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (!token) {
+        reject(new Error("Chrome did not return an access token"));
+        return;
+      }
+      resolve(token);
+    });
+  });
 }
 
 /**
- * Build the Google OAuth consent URL.
+ * Revoke the cached Google OAuth2 access token (sign-out cleanup).
  */
-export function buildAuthURL(state = "") {
-  const url = new URL(GOOGLE_AUTH_ENDPOINT);
-  url.searchParams.set("client_id", OAUTH_CLIENT_ID);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("redirect_uri", getRedirectURL());
-  url.searchParams.set("scope", OAUTH_SCOPES.join(" "));
-  url.searchParams.set("access_type", "offline");
-  url.searchParams.set("include_granted_scopes", "true");
-  url.searchParams.set("prompt", "consent");
-  if (state) url.searchParams.set("state", state);
-  return url.toString();
+export async function revokeGoogleAccessToken(token) {
+  return new Promise((resolve) => {
+    chrome.identity.removeCachedAuthToken({ token }, () => resolve());
+  });
 }
 
 /**
- * Exchange a Google authorization code for a Firebase ID token + refresh
- * token by calling the Identity Toolkit `signInWithIdp` endpoint with
- * `google.com` as the provider.
+ * Trade a Google OAuth2 access token for a Firebase ID token + refresh token
+ * via the Identity Toolkit `signInWithIdp` endpoint.
  */
-export async function exchangeCodeForFirebaseToken(code) {
-  const redirectUri = getRedirectURL();
-  // Chrome extension OAuth client is a *public* client (no client_secret).
-  // Build the application/x-www-form-urlencoded body the Identity Toolkit
-  // expects, omitting `client_secret` entirely. Per Firebase docs:
-  //   https://firebase.google.com/docs/auth/admin/manage-cookies
-  //   https://developers.google.com/identity/sign-in/web/devconsole-project
+export async function exchangeAccessTokenForFirebaseToken({
+  apiKey,
+  accessToken,
+  providerId = "google.com",
+  requestUri = "http://localhost",
+}) {
   const postBody = new URLSearchParams({
-    code,
-    client_id: OAUTH_CLIENT_ID,
-    grant_type: "authorization_code",
-    redirect_uri: redirectUri,
+    access_token: accessToken,
+    providerId,
   }).toString();
 
-  const resp = await fetch(FIREBASE_IDP_URL(FIREBASE_CONFIG.apiKey), {
+  const resp = await fetch(FIREBASE_IDP_URL(apiKey, providerId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       postBody,
-      requestUri: redirectUri,
+      requestUri,
       returnIdpCredential: true,
       returnSecureToken: true,
     }),
   });
 
+  const text = await resp.text();
   if (!resp.ok) {
-    const errBody = await resp.text();
-    throw new Error(`Firebase token exchange failed (${resp.status}): ${errBody}`);
+    throw new Error(`Firebase token exchange failed (${resp.status}): ${text}`);
   }
-
-  const data = await resp.json();
-  // data shape:
-  //   { idToken, refreshToken, expiresIn, localId (uid), email, ... }
+  const data = JSON.parse(text);
   if (!data.idToken) {
-    throw new Error("Firebase token exchange returned no idToken");
+    throw new Error("Firebase response missing idToken: " + text);
   }
   return {
     idToken: data.idToken,
@@ -86,8 +82,8 @@ export async function exchangeCodeForFirebaseToken(code) {
     expiresIn: data.expiresIn,
     uid: data.localId,
     email: data.email,
-    displayName: data.displayName,
-    photoUrl: data.photoUrl,
+    displayName: data.displayName || data.fullName || "",
+    photoUrl: data.photoUrl || "",
     raw: data,
   };
 }
@@ -95,8 +91,8 @@ export async function exchangeCodeForFirebaseToken(code) {
 /**
  * Refresh the Firebase ID token using the stored refresh token.
  */
-export async function refreshFirebaseToken(refreshToken) {
-  const url = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`;
+export async function refreshFirebaseToken({ apiKey, refreshToken }) {
+  const url = `https://securetoken.googleapis.com/v1/token?key=${apiKey}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -118,31 +114,4 @@ export async function refreshFirebaseToken(refreshToken) {
     email: data.email,
     raw: data,
   };
-}
-
-/**
- * High-level helper: launch the OAuth consent flow and return Firebase tokens.
- */
-export async function startGoogleSignIn() {
-  const authUrl = buildAuthURL();
-  const finalUrl = await chrome.identity.launchWebAuthFlow({
-    url: authUrl,
-    interactive: true,
-  });
-
-  if (!finalUrl) {
-    throw new Error("OAuth flow returned no URL (user cancelled?)");
-  }
-
-  const params = new URL(finalUrl).searchParams;
-  const error = params.get("error");
-  if (error) {
-    throw new Error(`Google OAuth error: ${error} ${params.get("error_description") || ""}`);
-  }
-  const code = params.get("code");
-  if (!code) {
-    throw new Error("OAuth flow returned no authorization code");
-  }
-
-  return exchangeCodeForFirebaseToken(code);
 }

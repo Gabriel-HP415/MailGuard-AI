@@ -1,19 +1,22 @@
 // ============================================
 // MailGuard-AI — Firebase auth glue layer
 // ============================================
-// Wraps chrome.identity OAuth + Identity Toolkit REST API and persists the
-// resulting session in chrome.storage.local. The backend issues its own JWT
-// after we POST the Firebase ID token to /api/v1/auth/firebase/login.
+// Wraps chrome.identity.getAuthToken + Identity Toolkit REST API and persists
+// the resulting session in chrome.storage.local. The backend issues its own
+// JWT after we POST the Firebase ID token to /api/v1/auth/firebase/login.
 
-import { BACKEND_BASE_URL, STORAGE_KEYS } from "./firebase-config.js";
-import { refreshFirebaseToken, startGoogleSignIn } from "./oauth.js";
+import { BACKEND_BASE_URL, FIREBASE_CONFIG, STORAGE_KEYS } from "./firebase-config.js";
+import {
+  exchangeAccessTokenForFirebaseToken,
+  getGoogleAccessToken,
+  refreshFirebaseToken as refreshFirebaseIdToken,
+  revokeGoogleAccessToken,
+} from "./oauth.js";
 
 const STORAGE = chrome.storage.local;
 
 async function readStorage(keys) {
-  return new Promise((resolve) => {
-    STORAGE.get(keys, resolve);
-  });
+  return new Promise((resolve) => STORAGE.get(keys, resolve));
 }
 
 async function writeStorage(values) {
@@ -29,7 +32,9 @@ function decodeJwtExpiry(idToken) {
   const parts = idToken.split(".");
   if (parts.length < 2) return 0;
   try {
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+    );
     return Number(payload.exp || 0) * 1000;
   } catch {
     return 0;
@@ -40,7 +45,6 @@ async function isIdTokenFresh(idToken) {
   if (!idToken) return false;
   const exp = decodeJwtExpiry(idToken);
   if (!exp) return false;
-  // Refresh 60s before expiry to avoid race conditions.
   return Date.now() < exp - 60_000;
 }
 
@@ -48,20 +52,22 @@ async function ensureFreshIdToken() {
   const stored = await readStorage([
     STORAGE_KEYS.ID_TOKEN,
     STORAGE_KEYS.REFRESH_TOKEN,
-    STORAGE_KEYS.UID,
   ]);
-  const { [STORAGE_KEYS.ID_TOKEN]: idToken, [STORAGE_KEYS.REFRESH_TOKEN]: refreshToken } = stored;
+  const idToken = stored[STORAGE_KEYS.ID_TOKEN];
+  const refreshToken = stored[STORAGE_KEYS.REFRESH_TOKEN];
   if (await isIdTokenFresh(idToken)) {
     return { idToken, refreshed: false };
   }
   if (!refreshToken) {
     throw new Error("No Firebase refresh token; user must sign in again");
   }
-  const refreshed = await refreshFirebaseToken(refreshToken);
+  const refreshed = await refreshFirebaseIdToken({
+    apiKey: FIREBASE_CONFIG.apiKey,
+    refreshToken,
+  });
   await writeStorage({
     [STORAGE_KEYS.ID_TOKEN]: refreshed.idToken,
     [STORAGE_KEYS.REFRESH_TOKEN]: refreshed.refreshToken,
-    [STORAGE_KEYS.UID]: refreshed.uid,
   });
   return { idToken: refreshed.idToken, refreshed: true };
 }
@@ -84,7 +90,11 @@ async function exchangeForBackendToken(firebaseIdToken) {
  * the backend JWT, and return the user profile.
  */
 export async function signInWithGoogle() {
-  const firebaseTokens = await startGoogleSignIn();
+  const googleAccessToken = await getGoogleAccessToken({ interactive: true });
+  const firebaseTokens = await exchangeAccessTokenForFirebaseToken({
+    apiKey: FIREBASE_CONFIG.apiKey,
+    accessToken: googleAccessToken,
+  });
 
   await writeStorage({
     [STORAGE_KEYS.ID_TOKEN]: firebaseTokens.idToken,
@@ -108,6 +118,7 @@ export async function signInWithGoogle() {
     email: firebaseTokens.email,
     displayName: firebaseTokens.displayName,
     photoUrl: firebaseTokens.photoUrl,
+    googleAccessToken,
     backendToken,
   };
 }
@@ -119,7 +130,6 @@ export async function signInWithGoogle() {
 export async function getIdToken() {
   const { idToken, refreshed } = await ensureFreshIdToken();
   if (refreshed) {
-    // Re-exchange with backend so it can rotate any session claims too.
     try {
       const backendToken = await exchangeForBackendToken(idToken);
       await writeStorage({
@@ -128,8 +138,6 @@ export async function getIdToken() {
           Date.now() + backendToken.expires_in * 1000,
       });
     } catch (err) {
-      // Backend unreachable / 5xx — keep using the refreshed Firebase token,
-      // caller will surface a clearer error if the API call later fails.
       console.warn("Backend JWT refresh failed", err);
     }
   }
@@ -146,7 +154,6 @@ export async function getBackendToken() {
   if (token && Date.now() < exp - 30_000) {
     return token;
   }
-  // Refresh by re-exchanging Firebase ID token.
   const firebaseToken = await getIdToken();
   const backendToken = await exchangeForBackendToken(firebaseToken);
   await writeStorage({
@@ -168,10 +175,17 @@ export async function getCurrentUser() {
 }
 
 export async function isSignedIn() {
-  const { [STORAGE_KEYS.UID]: uid } = await readStorage([STORAGE_KEYS.UID]);
-  return Boolean(uid);
+  const stored = await readStorage([STORAGE_KEYS.UID]);
+  return Boolean(stored[STORAGE_KEYS.UID]);
 }
 
 export async function signOut() {
-  await clearStorage(Object.values(STORAGE_KEYS));
+  const stored = await readStorage(["google_access_token"]);
+  if (stored.google_access_token) {
+    await revokeGoogleAccessToken(stored.google_access_token);
+  }
+  await clearStorage([
+    ...Object.values(STORAGE_KEYS),
+    "google_access_token",
+  ]);
 }
