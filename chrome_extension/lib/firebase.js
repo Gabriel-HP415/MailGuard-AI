@@ -1,9 +1,19 @@
 // ============================================
-// MailGuard-AI — Firebase auth glue layer
+// MailGuard-AI — Auth glue layer
 // ============================================
-// Wraps chrome.identity.getAuthToken + Identity Toolkit REST API and persists
-// the resulting session in chrome.storage.local. The backend issues its own
-// JWT after we POST the Firebase ID token to /api/v1/auth/firebase/login.
+//
+// Unified session store over chrome.storage.local that exposes the same
+// shape regardless of sign-in method:
+//
+//   - Firebase (Google OAuth via chrome.identity)
+//   - Email + password (legacy / universal flow that needs no OAuth client)
+//
+// Both flows end up storing:
+//   - backend_access_token / backend_access_token_expires_at
+//   - firebase_uid (Firebase) OR user_id (email/password) — same field
+//   - firebase_email / display_name / photo_url
+//
+// `signOut()` clears the entire session regardless of provider.
 
 import {
   BACKEND_BASE_URL,
@@ -77,7 +87,6 @@ async function ensureFreshIdToken() {
     });
     return { idToken: refreshed.idToken, refreshed: true };
   } catch (err) {
-    // Refresh token revoked or expired — force re-auth.
     await clearStorage(Object.values(STORAGE_KEYS));
     throw new Error(
       "Firebase session expired. Please sign in again. (" +
@@ -101,27 +110,13 @@ async function exchangeForBackendToken(firebaseIdToken) {
 }
 
 /**
- * Trigger the Google sign-in flow, persist Firebase tokens, exchange for
- * the backend JWT, and return the user profile + tokens.
+ * Persist a Firebase-derived session (used after Google sign-in).
  */
-export async function signInWithGoogle() {
-  let googleAccessToken;
-  try {
-    googleAccessToken = await getGoogleAccessToken({ forceFresh: true });
-  } catch (err) {
-    throw err;
-  }
-
-  let firebaseTokens;
-  try {
-    firebaseTokens = await exchangeAccessTokenForFirebaseToken({
-      apiKey: FIREBASE_CONFIG.apiKey,
-      accessToken: googleAccessToken,
-    });
-  } catch (err) {
-    throw err;
-  }
-
+async function persistFirebaseSession({
+  firebaseTokens,
+  googleAccessToken,
+  backendToken,
+}) {
   await writeStorage({
     [STORAGE_KEYS.ID_TOKEN]: firebaseTokens.idToken,
     [STORAGE_KEYS.REFRESH_TOKEN]: firebaseTokens.refreshToken,
@@ -130,16 +125,30 @@ export async function signInWithGoogle() {
     [STORAGE_KEYS.DISPLAY_NAME]: firebaseTokens.displayName || "",
     [STORAGE_KEYS.PHOTO_URL]: firebaseTokens.photoUrl || "",
     [STORAGE_KEYS.SIGNED_IN_AT]: Date.now(),
-    google_access_token: googleAccessToken,
-  });
-
-  const backendToken = await exchangeForBackendToken(firebaseTokens.idToken);
-  await writeStorage({
+    [STORAGE_KEYS.AUTH_PROVIDER]: "google",
     [STORAGE_KEYS.BACKEND_TOKEN]: backendToken.access_token,
     [STORAGE_KEYS.BACKEND_TOKEN_EXPIRES_AT]:
       Date.now() + backendToken.expires_in * 1000,
+    google_access_token: googleAccessToken,
   });
+}
 
+/**
+ * Trigger the Google sign-in flow. Throws on any OAuth / Firebase error.
+ * The popup converts these errors to user-friendly messages.
+ */
+export async function signInWithGoogle() {
+  const googleAccessToken = await getGoogleAccessToken({ forceFresh: true });
+  const firebaseTokens = await exchangeAccessTokenForFirebaseToken({
+    apiKey: FIREBASE_CONFIG.apiKey,
+    accessToken: googleAccessToken,
+  });
+  const backendToken = await exchangeForBackendToken(firebaseTokens.idToken);
+  await persistFirebaseSession({
+    firebaseTokens,
+    googleAccessToken,
+    backendToken,
+  });
   return {
     uid: firebaseTokens.uid,
     email: firebaseTokens.email,
@@ -151,10 +160,35 @@ export async function signInWithGoogle() {
 }
 
 /**
+ * Persist an email/password-derived session (used after /auth/register or
+ * /auth/login). Returns the user profile as exposed by /auth/me.
+ */
+export async function persistBackendSession({ token, expiresIn, user }) {
+  await writeStorage({
+    [STORAGE_KEYS.BACKEND_TOKEN]: token,
+    [STORAGE_KEYS.BACKEND_TOKEN_EXPIRES_AT]: Date.now() + expiresIn * 1000,
+    [STORAGE_KEYS.UID]: `email:${user?.id ?? user?.email ?? "unknown"}`,
+    [STORAGE_KEYS.EMAIL]: user?.email || "",
+    [STORAGE_KEYS.DISPLAY_NAME]:
+      user?.full_name || user?.username || user?.email?.split("@")[0] || "User",
+    [STORAGE_KEYS.PHOTO_URL]: user?.avatar_url || "",
+    [STORAGE_KEYS.SIGNED_IN_AT]: Date.now(),
+    [STORAGE_KEYS.AUTH_PROVIDER]: "email",
+  });
+  return user;
+}
+
+/**
  * Returns a valid Firebase ID token, refreshing it transparently when expired.
- * Throws when the user is not signed in.
+ * Throws when the user is not signed in via Firebase.
  */
 export async function getIdToken() {
+  const provider = (await readStorage([STORAGE_KEYS.AUTH_PROVIDER]))[
+    STORAGE_KEYS.AUTH_PROVIDER
+  ];
+  if (provider !== "google") {
+    throw new Error("Signed in with email/password — no Firebase ID token");
+  }
   const { idToken, refreshed } = await ensureFreshIdToken();
   if (refreshed) {
     try {
@@ -181,14 +215,19 @@ export async function getBackendToken() {
   if (token && Date.now() < exp - 30_000) {
     return token;
   }
-  const firebaseToken = await getIdToken();
-  const backendToken = await exchangeForBackendToken(firebaseToken);
-  await writeStorage({
-    [STORAGE_KEYS.BACKEND_TOKEN]: backendToken.access_token,
-    [STORAGE_KEYS.BACKEND_TOKEN_EXPIRES_AT]:
-      Date.now() + backendToken.expires_in * 1000,
-  });
-  return backendToken.access_token;
+  // Try to refresh via Firebase first; fall back to backend-only session.
+  try {
+    const firebaseToken = await getIdToken();
+    const backendToken = await exchangeForBackendToken(firebaseToken);
+    await writeStorage({
+      [STORAGE_KEYS.BACKEND_TOKEN]: backendToken.access_token,
+      [STORAGE_KEYS.BACKEND_TOKEN_EXPIRES_AT]:
+        Date.now() + backendToken.expires_in * 1000,
+    });
+    return backendToken.access_token;
+  } catch {
+    throw new Error("Session expired. Please sign in again.");
+  }
 }
 
 export async function getCurrentUser() {
@@ -198,12 +237,20 @@ export async function getCurrentUser() {
     STORAGE_KEYS.DISPLAY_NAME,
     STORAGE_KEYS.PHOTO_URL,
     STORAGE_KEYS.SIGNED_IN_AT,
+    STORAGE_KEYS.AUTH_PROVIDER,
   ]);
 }
 
+export async function getAuthProvider() {
+  const { [STORAGE_KEYS.AUTH_PROVIDER]: provider } = await readStorage([
+    STORAGE_KEYS.AUTH_PROVIDER,
+  ]);
+  return provider || null;
+}
+
 export async function isSignedIn() {
-  const stored = await readStorage([STORAGE_KEYS.UID]);
-  return Boolean(stored[STORAGE_KEYS.UID]);
+  const stored = await readStorage([STORAGE_KEYS.UID, STORAGE_KEYS.BACKEND_TOKEN]);
+  return Boolean(stored[STORAGE_KEYS.UID] && stored[STORAGE_KEYS.BACKEND_TOKEN]);
 }
 
 export async function signOut() {
@@ -216,5 +263,10 @@ export async function signOut() {
   } catch (err) {
     console.warn("signOutOauth error:", err);
   }
-  await clearStorage([...Object.values(STORAGE_KEYS), "google_access_token"]);
+  await clearStorage([
+    ...Object.values(STORAGE_KEYS),
+    "google_access_token",
+    "mg_token",
+    "mg_user",
+  ]);
 }

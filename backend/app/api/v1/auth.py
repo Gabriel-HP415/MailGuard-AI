@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -16,15 +18,25 @@ from app.services import activity_log_service, user_service
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=201)
+@router.post("/register", response_model=TokenResponse, status_code=201)
 def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+    """Register a new user and return a backend JWT — no separate /login needed."""
     user = user_service.create_user(db, payload)
     activity_log_service.log(
         db, user=user, action="register",
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
-    return user
+
+    token = create_access_token(
+        subject=user.id,
+        extra_claims={"email": user.email, "role": user.role.value},
+    )
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

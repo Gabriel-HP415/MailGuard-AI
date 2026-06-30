@@ -213,6 +213,59 @@ input[type="text"] {
   margin: 8px 0 0;
 }
 
+.mg-popup__hint--muted {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mg-popup__hint code {
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 10.5px;
+}
+
+.mg-popup__divider {
+  margin: 0 6px;
+  color: var(--border);
+}
+
+.mg-popup__advanced {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.mg-popup__advanced > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  list-style: none;
+  user-select: none;
+}
+
+.mg-popup__advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mg-popup__advanced > summary::before {
+  content: "▸";
+  margin-right: 6px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+
+.mg-popup__advanced[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.mg-popup__user-provider {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+
 .mg-popup__error {
   background: #fef2f2;
   color: #991b1b;

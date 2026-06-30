@@ -16,6 +16,7 @@ import {
   getCurrentUser,
   getBackendToken,
   isSignedIn,
+  persistBackendSession,
   signOut as firebaseSignOut,
 } from "../lib/firebase.js";
 
@@ -23,6 +24,16 @@ const FIREBASE_STATE = {
   signedIn: false,
   profile: null,
 };
+
+async function fetchMe(token) {
+  const resp = await fetch(`${api.baseUrl}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    throw new Error(`/auth/me failed: ${resp.status}`);
+  }
+  return resp.json();
+}
 
 async function refreshFirebaseState() {
   try {
@@ -56,12 +67,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.type === "login") {
         await api.loadConfig();
         const data = await api.login(message.payload);
+        // Fetch the user profile so the popup can render a display name.
+        try {
+          const user = await fetchMe(data.access_token);
+          await persistBackendSession({
+            token: data.access_token,
+            expiresIn: data.expires_in,
+            user,
+          });
+          api.token = data.access_token;
+          api.user = user;
+        } catch (err) {
+          console.warn("[MailGuard-AI] /auth/me failed after login", err);
+        }
         sendResponse({ ok: true, data });
         return;
       }
       if (message.type === "register") {
         await api.loadConfig();
         const data = await api.register(message.payload);
+        // /auth/register now returns TokenResponse — persist immediately.
+        try {
+          const user = await fetchMe(data.access_token);
+          await persistBackendSession({
+            token: data.access_token,
+            expiresIn: data.expires_in,
+            user,
+          });
+          api.token = data.access_token;
+          api.user = user;
+        } catch (err) {
+          console.warn("[MailGuard-AI] /auth/me failed after register", err);
+        }
         sendResponse({ ok: true, data });
         return;
       }

@@ -38,4 +38,5 @@ export const STORAGE_KEYS = Object.freeze({
   BACKEND_TOKEN: "backend_access_token",
   BACKEND_TOKEN_EXPIRES_AT: "backend_access_token_expires_at",
   SIGNED_IN_AT: "firebase_signed_in_at",
+  AUTH_PROVIDER: "auth_provider",
 });

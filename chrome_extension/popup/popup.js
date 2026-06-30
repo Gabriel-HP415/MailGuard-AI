@@ -1,11 +1,9 @@
 /**
  * MailGuard-AI — Popup logic.
- * Connects to the API singleton and renders dashboard / login form.
  *
- * Supports two sign-in methods:
- *   - "Sign in with Google"  → chrome.identity OAuth → Firebase ID token →
- *                              POST /api/v1/auth/firebase/login → backend JWT
- *   - email/password         → POST /api/v1/auth/login (legacy / dev only)
+ * Default sign-in is email/password (universal, no OAuth client needed).
+ * Google sign-in is hidden under an <details> "Advanced" panel and only works
+ * if the project has a Chrome Extension OAuth client configured.
  */
 
 (async function initPopup() {
@@ -19,16 +17,21 @@
   const userName = document.getElementById("user-name");
   const userEmail = document.getElementById("user-email");
   const userAvatar = document.getElementById("user-avatar");
+  const userProvider = document.getElementById("user-provider");
   const statTotal = document.getElementById("stat-total");
   const statRisks = document.getElementById("stat-risks");
   const statAvg = document.getElementById("stat-avg");
   const recentList = document.getElementById("recent-list");
   const errorMsg = document.getElementById("error-msg");
   const loginForm = document.getElementById("login-form");
+  const loginBtnLabel = document.getElementById("login-btn-label");
   const openOptions = document.getElementById("open-options");
   const openRegister = document.getElementById("open-register");
   const logoutBtn = document.getElementById("logout-btn");
   const googleSignInBtn = document.getElementById("google-signin-btn");
+
+  // Two modes for the email/password form: "sign-in" vs "register".
+  let formMode = "sign-in";
 
   function setError(msg) {
     if (!msg) {
@@ -54,6 +57,22 @@
     }
   }
 
+  function switchToRegister() {
+    formMode = "register";
+    loginBtnLabel.textContent = "Create account";
+    const passwordInput = document.getElementById("password");
+    if (passwordInput) passwordInput.setAttribute("autocomplete", "new-password");
+    setError("");
+  }
+
+  function switchToSignIn() {
+    formMode = "sign-in";
+    loginBtnLabel.textContent = "Sign in";
+    const passwordInput = document.getElementById("password");
+    if (passwordInput) passwordInput.setAttribute("autocomplete", "current-password");
+    setError("");
+  }
+
   async function refreshStatus() {
     const status = await chrome.runtime.sendMessage({ type: "get-status" });
     if (!status.ok) {
@@ -68,11 +87,19 @@
       authSection.hidden = true;
       dashSection.hidden = false;
       const profile = await firebaseAuth.getCurrentUser();
+      const provider = profile?.auth_provider || "google";
       const name =
-        status.user?.full_name || status.user?.username || profile.firebase_display_name || "user";
+        status.user?.full_name ||
+        status.user?.username ||
+        profile?.firebase_display_name ||
+        "user";
       userName.textContent = name;
-      userEmail.textContent = status.user?.email || profile.firebase_email || "";
-      const photoUrl = profile.firebase_photo_url || status.user?.avatar_url || "";
+      userEmail.textContent = status.user?.email || profile?.firebase_email || "";
+      if (userProvider) {
+        userProvider.textContent =
+          provider === "google" ? "Signed in with Google" : "Signed in with email";
+      }
+      const photoUrl = profile?.firebase_photo_url || status.user?.avatar_url || "";
       if (photoUrl) {
         userAvatar.src = photoUrl;
         userAvatar.style.display = "";
@@ -132,22 +159,41 @@
     }
   }
 
+  // ---- Email / password: sign-in or register ----
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     setError("");
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
-    setBusy(loginForm.querySelector("button"), true, "Signing in…");
+    const submitBtn = loginForm.querySelector("button");
+    setBusy(submitBtn, true, formMode === "register" ? "Creating account…" : "Signing in…");
+
     try {
-      await chrome.runtime.sendMessage({
-        type: "login",
-        payload: { email, password },
-      });
+      if (formMode === "register") {
+        const username = email.split("@")[0];
+        const regResult = await chrome.runtime.sendMessage({
+          type: "register",
+          payload: { email, password, username, full_name: username },
+        });
+        if (!regResult.ok) throw new Error(regResult.error || "Registration failed");
+        // Server already returns an access_token — persist the session locally.
+        await chrome.runtime.sendMessage({
+          type: "login",
+          payload: { email, password },
+        });
+      } else {
+        await chrome.runtime.sendMessage({
+          type: "login",
+          payload: { email, password },
+        });
+      }
       await refreshStatus();
+      document.getElementById("password").value = "";
+      switchToSignIn();
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(formatAuthError(err));
     } finally {
-      setBusy(loginForm.querySelector("button"), false);
+      setBusy(submitBtn, false);
     }
   });
 
@@ -156,11 +202,13 @@
     setBusy(googleSignInBtn, true, "Opening Google sign-in…");
     try {
       const profile = await firebaseAuth.signInWithGoogle();
-      // Notify background service worker so it can update its in-memory state.
-      await chrome.runtime.sendMessage({ type: "firebase_signed_in", payload: profile });
+      await chrome.runtime.sendMessage({
+        type: "firebase_signed_in",
+        payload: profile,
+      });
       await refreshStatus();
     } catch (err) {
-      console.error("Google sign-in failed", err);
+      console.error("[MailGuard] Google sign-in failed", err);
       setError(formatAuthError(err));
     } finally {
       setBusy(googleSignInBtn, false);
@@ -169,7 +217,7 @@
 
   openRegister.addEventListener("click", (e) => {
     e.preventDefault();
-    chrome.runtime.openOptionsPage();
+    switchToRegister();
   });
 
   openOptions.addEventListener("click", () => chrome.runtime.openOptionsPage());
@@ -193,29 +241,36 @@
 
   function formatAuthError(err) {
     const msg = String(err && err.message ? err.message : err || "Unknown error");
+    const lower = msg.toLowerCase();
     if (/cancel|approve|denied/i.test(msg)) {
-      return "Google sign-in was cancelled. If the popup warned about an unverified app, try again or use email/password below.";
+      return "Google sign-in was cancelled.";
     }
-    if (/invalid.*client|oauth.*client.*id|unregistered/i.test(msg)) {
-      return "OAuth client mismatch. Check FIREBASE_OAUTH_CLIENT_ID in backend .env matches the Web OAuth client in Google Cloud Console (project: mailguard-ai-2).";
+    if (lower.includes("invalid_grant")) {
+      return "Sign-in link expired. Please sign in again with email/password.";
     }
-    if (/Firebase refused|UNREGISTERED_IDP|OPERATION_NOT_ALLOWED/i.test(msg)) {
-      return "Google sign-in is not enabled for this Firebase project. Enable it in Firebase Console → Authentication → Sign-in method, then retry.";
+    if (/invalid.*oauth.*client|unregistered|oauth.*client.*id/i.test(msg)) {
+      return "OAuth client misconfigured. Sign in with email/password below instead.";
     }
-    if (/Both OAuth flows failed/i.test(msg)) {
-      return "Both Google OAuth flows failed. Make sure the Web OAuth client exists in Cloud Console and the consent screen lists your email as a test user.";
+    if (/firebase refused/i.test(msg)) {
+      return "Google sign-in failed. Use email/password below (recommended).";
     }
-    if (/redirect_uri/i.test(msg)) {
-      return "OAuth redirect URI mismatch. Add https://dfmiohjepkicjcjdfakggiaikkohcfle.chromiumapp.org/oauth2 to the Web OAuth client's Authorized redirect URIs.";
+    if (/redirect_uri_mismatch/i.test(msg)) {
+      return "Google sign-in needs a Chrome Extension OAuth client. Email/password below works without it.";
     }
-    if (/Backend login failed/i.test(msg)) {
-      return "Backend rejected the Firebase token. Check FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY in backend .env.";
+    if (/401|unauthor/i.test(msg)) {
+      return "Wrong email or password, or your account doesn't exist yet. Click Register above to create one.";
     }
-    if (/chrome.identity error|Token exchange failed|invalid_grant/i.test(msg)) {
-      return "Chrome / Google rejected the OAuth exchange: " + msg;
+    if (/409|already exists|taken/i.test(msg)) {
+      return "An account with that email already exists. Click 'Sign in' instead.";
     }
-    if (/Network|Failed to fetch/i.test(msg)) {
-      return "Network error talking to Google / Firebase. Check your internet connection.";
+    if (/422|validation|password.*short|password.*8/i.test(msg)) {
+      return "Password must be at least 8 characters.";
+    }
+    if (/network|failed to fetch/i.test(msg)) {
+      return "Network error talking to the backend. Check your internet connection and the Backend URL in settings.";
+    }
+    if (/backend|503|500/i.test(msg)) {
+      return "Backend rejected the request. Check the Backend URL in settings or try again later.";
     }
     return msg;
   }
