@@ -20,7 +20,7 @@ COPY . /app/ai_service
 # Models + datasets directories (mounted as volumes in production)
 RUN mkdir -p /app/ai_service/models/artifacts /app/ai_service/datasets
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/ai_service
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8001
