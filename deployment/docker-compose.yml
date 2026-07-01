@@ -50,7 +50,7 @@ services:
   # -------------------------------------------------------------
   ai_service:
     build:
-      context: ./ai_service
+      context: ../ai_service
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
@@ -75,7 +75,7 @@ services:
   # -------------------------------------------------------------
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
@@ -105,7 +105,7 @@ services:
   # -------------------------------------------------------------
   frontend:
     build:
-      context: .
+      context: ..
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
     environment:
