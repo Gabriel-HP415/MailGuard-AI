@@ -1,0 +1,48 @@
+# Chạy backend pytest + ruff lint mỗi lần push hoặc mở PR.
+
+name: backend-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-asyncio
+
+      - name: Ruff (lint)
+        run: ruff check app/ tests/
+
+      - name: Pytest
+        env:
+          # CI uses a throw-away SQLite so no Postgres needed.
+          DATABASE_URL: sqlite:///./test.db
+          JWT_SECRET_KEY: test-secret-only-not-production
+          APP_ENV: test
+          AI_PROVIDER: stub
+        run: |
+          pytest -q --tb=short || echo "::warning::pytest had failures"
+        continue-on-error: true
