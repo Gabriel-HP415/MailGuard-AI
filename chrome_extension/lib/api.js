@@ -92,10 +92,14 @@ class MailGuardAPI {
       // Not JSON; ignore
     }
     if (!resp.ok) {
-      const msg =
+      // Backend puts useful diagnostics in `body.error.details` (when DEBUG on
+      // the server) and `body.error.message`. Prefer those over raw text.
+      let msg =
         (data && data.error && data.error.message) ||
         text ||
         `HTTP ${resp.status}`;
+      // If we got a non-JSON HTML/text response, trim the chrome-friendly prefix.
+      if (msg && msg.length > 240) msg = msg.slice(0, 240) + "…";
       const error = new Error(msg);
       error.status = resp.status;
       error.body = data;
@@ -106,7 +110,11 @@ class MailGuardAPI {
 
   // ---------- Auth ----------
   async register(payload) {
-    return this._request("/auth/register", { method: "POST", body: payload, auth: false });
+    const data = await this._request("/auth/register", { method: "POST", body: payload, auth: false });
+    if (data && data.access_token) {
+      await this.saveConfig({ token: data.access_token });
+    }
+    return data;
   }
 
   async login(payload) {

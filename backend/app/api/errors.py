@@ -75,9 +75,20 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def _unhandled_handler(_: Request, exc: Exception) -> JSONResponse:
-        logger.exception("Unhandled exception: %s", exc)
+    async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
+        # Surface the traceback in the response when DEBUG is enabled so the
+        # popup can show the underlying cause (SQLAlchemy errors, MySQL
+        # connection issues, missing columns, etc.).
+        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+        debug = settings.app_debug or settings.app_env != "production"
+        message = "Unexpected server error"
+        details: dict = {}
+        if debug:
+            import traceback as _tb
+
+            message = f"{type(exc).__name__}: {exc}"
+            details = {"traceback": _tb.format_exc().splitlines()[-20:]}
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=_error_payload("internal_error", "Unexpected server error"),
+            content=_error_payload("internal_error", message, details),
         )

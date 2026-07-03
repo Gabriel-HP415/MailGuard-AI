@@ -171,15 +171,10 @@
     try {
       if (formMode === "register") {
         const username = email.split("@")[0];
-        const regResult = await chrome.runtime.sendMessage({
+        // /auth/register returns TokenResponse, so we're already signed in.
+        await chrome.runtime.sendMessage({
           type: "register",
           payload: { email, password, username, full_name: username },
-        });
-        if (!regResult.ok) throw new Error(regResult.error || "Registration failed");
-        // Server already returns an access_token — persist the session locally.
-        await chrome.runtime.sendMessage({
-          type: "login",
-          payload: { email, password },
         });
       } else {
         await chrome.runtime.sendMessage({
@@ -270,7 +265,22 @@
       return "Network error talking to the backend. Check your internet connection and the Backend URL in settings.";
     }
     if (/backend|503|500/i.test(msg)) {
-      return "Backend rejected the request. Check the Backend URL in settings or try again later.";
+      // Try to surface a more useful hint from common SQLAlchemy / MySQL errors.
+      const hint =
+        /Unknown column|1054/.test(msg)
+          ? "Database schema is out of date. Run the Alembic migration on the backend: `alembic upgrade head`."
+          : /doesn't exist|1146/.test(msg)
+            ? "A required database table is missing. Run `alembic upgrade head` on the backend."
+          : /Access denied|1045/.test(msg)
+            ? "Database credentials are wrong. Check DB_* environment variables."
+            : /pymysql|operationalerror|connection refused|2003/i.test(msg)
+              ? "Cannot reach the database. Check DB_HOST / DB_PORT."
+              : null;
+      return (
+        (hint ? hint + " (" : "Backend rejected the request. (") +
+        msg.replace(/^Backend login failed \(.*?\): /, "").slice(0, 240) +
+        ")"
+      );
     }
     return msg;
   }
