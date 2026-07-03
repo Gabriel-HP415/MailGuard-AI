@@ -123,6 +123,24 @@ class MailGuardAPI {
     return data;
   }
 
+  /** Exchange a Google OAuth access token for a MailGuard JWT.
+   *
+   * The token comes from `chrome.identity.getAuthToken(...)` in the
+   * service worker. The backend calls Google userinfo to verify it before
+   * issuing the MailGuard JWT.
+   */
+  async loginWithGmail(payload) {
+    const data = await this._request("/auth/gmail/login", {
+      method: "POST",
+      body: payload,
+      auth: false,
+    });
+    if (data && data.access_token) {
+      await this.saveConfig({ token: data.access_token });
+    }
+    return data;
+  }
+
   async logout() {
     await this.clearAuth();
   }

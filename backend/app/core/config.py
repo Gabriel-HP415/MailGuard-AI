@@ -1,5 +1,7 @@
 """Application configuration loaded from environment variables."""
 
+import os
+import secrets
 from functools import lru_cache
 from typing import List
 
@@ -35,10 +37,10 @@ class Settings(BaseSettings):
     db_user: str = "mailguard"
     db_password: str = "change_me_in_production"
 
-    database_url: str | None = None
+    database_url: str = ""
 
     # ---------- Authentication ----------
-    jwt_secret_key: str = "replace_with_long_random_string"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440
 
@@ -91,13 +93,41 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_url(self) -> str:
-        """Return the SQLAlchemy URL."""
-        if self.database_url:
-            return self.database_url
-        return (
+        """Return a SQLAlchemy URL with `postgresql://` (not `postgres://`)."""
+        url = self.database_url or (
             f"mysql+pymysql://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
         )
+        # SQLAlchemy 2.x expects `postgresql` / `postgresql+psycopg2` /
+        # `postgresql+psycopg` as the drivername. Some tools (and the
+        # Supabase dashboard) hand out URLs starting with `postgres://` —
+        # SQLAlchemy's plugin registry doesn't know the bare `postgres`
+        # scheme and raises `NoSuchModuleError: sqlalchemy.dialects:postgres`.
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        elif url.startswith("postgresql+"):
+            pass
+        return url
+
+    def effective_jwt_secret(self) -> str:
+        """Return the JWT secret with a hard fail in production.
+
+        In ``APP_ENV=production`` we refuse to run if no real secret is
+        configured — leaving the placeholder would let any attacker forge
+        tokens trivially. For local development we auto-generate a random
+        secret so the dev server boots without ceremony (and restarts won't
+        invalidate previously-signed JWTs because the secret stays in the
+        process memory for that run).
+        """
+        if self.jwt_secret_key and self.jwt_secret_key != "replace_with_long_random_string":
+            return self.jwt_secret_key
+        if self.app_env.lower() == "production":
+            raise RuntimeError(
+                "JWT_SECRET_KEY is not set. Refusing to start in production "
+                "because tokens would be signed with the insecure default "
+                "value. Set JWT_SECRET_KEY in your Render env vars or .env."
+            )
+        return secrets.token_urlsafe(48)
 
 
 @lru_cache

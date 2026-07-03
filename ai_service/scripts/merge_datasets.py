@@ -483,6 +483,21 @@ def merge_all() -> Path:
         by_class[s.label] = by_class.get(s.label, 0) + 1
         by_source[s.source] = by_source.get(s.source, 0) + 1
 
+    # If we STILL ended up with very few samples (every public download
+    # failed), splice in the in-repo seed data so training has signal.
+    if sum(by_class.values()) < 200:
+        try:
+            from ai_service.app.data.build_seed import build_seed_csv
+            build_seed_csv(out_path=out_path)
+            logger.warning(
+                "Public dataset acquisition returned %d samples; "
+                "merged in-repo seed dataset as a fallback.",
+                sum(by_class.values()),
+            )
+            return out_path
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Seed fallback also failed: %s", exc)
+
     logger.info("Wrote merged dataset -> %s (%d samples)", out_path, len(samples))
     logger.info("By class: %s", by_class)
     logger.info("By source: %s", by_source)

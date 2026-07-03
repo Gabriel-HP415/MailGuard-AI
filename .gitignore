@@ -116,3 +116,26 @@ temp/
 *.tmp
 *.bak
 *.swp
+
+# ===== Chrome extension =====
+chrome_extension/.DS_Store
+chrome_extension/**/*.zip
+chrome_extension/build/
+chrome_extension/dist/
+chrome_extension/node_modules/
+
+# ===== Local config (NOT for production) =====
+chrome_extension/.env
+chrome_extension/.env.local
+
+# Anything that looks like a private key
+*.pem
+*.key
+*.pfx
+*.p12
+gmail_oauth_client.txt
+
+# Cursor / IDE helper folders (project-local excludes live in .git/info/exclude)
+.idea/
+.vscode/
+!.vscode/settings.json

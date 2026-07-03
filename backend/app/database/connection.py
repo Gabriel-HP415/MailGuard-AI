@@ -46,9 +46,18 @@ def _resolve_postgres_kwargs(url: str) -> dict:
     return connect_args
 
 
+def _is_postgres_url(url: str) -> bool:
+    return (
+        url.startswith("postgresql://")
+        or url.startswith("postgresql+")
+        or url.startswith("postgresql+psycopg2://")
+        or url.startswith("postgresql+psycopg://")
+    )
+
+
 def _build_engine_kwargs(url: str) -> dict:
     """Engine kwargs that work on Render free tier + Supabase Postgres."""
-    if not (url.startswith("postgres://") or url.startswith("postgresql://")):
+    if not _is_postgres_url(url):
         # MySQL / SQLite path — keep pre_ping, drop hostaddr.
         return {
             "connect_args": {"connect_timeout": 10},

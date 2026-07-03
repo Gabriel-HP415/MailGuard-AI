@@ -194,16 +194,22 @@
 
   googleSignInBtn.addEventListener("click", async () => {
     setError("");
-    setBusy(googleSignInBtn, true, "Opening Google sign-in…");
+    setBusy(googleSignInBtn, true, "Connecting Gmail…");
     try {
-      const profile = await firebaseAuth.signInWithGoogle();
-      await chrome.runtime.sendMessage({
-        type: "firebase_signed_in",
-        payload: profile,
+      // Full Gmail-OAuth flow:
+      //   1. Background worker asks Chrome for a Gmail-API access token.
+      //   2. Background worker POSTs it to backend /auth/gmail/login.
+      //   3. Backend verifies via Google userinfo and returns MailGuard JWT.
+      const result = await chrome.runtime.sendMessage({
+        type: "gmail_login",
+        payload: {},
       });
+      if (!result || !result.ok) {
+        throw new Error(result?.error || "Gmail sign-in failed");
+      }
       await refreshStatus();
     } catch (err) {
-      console.error("[MailGuard] Google sign-in failed", err);
+      console.error("[MailGuard] Gmail sign-in failed", err);
       setError(formatAuthError(err));
     } finally {
       setBusy(googleSignInBtn, false);

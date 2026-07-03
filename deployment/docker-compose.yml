@@ -23,7 +23,9 @@ x-common-env: &common-env
 services:
 
   # -------------------------------------------------------------
-  # MySQL 8 — primary persistent store
+  # MySQL 8 — primary persistent store (default for local compose)
+  # For Render + Supabase set DATABASE_URL in the .env and the MySQL
+  # service is skipped.
   # -------------------------------------------------------------
   mysql:
     image: mysql:8.0
@@ -85,11 +87,26 @@ services:
       DB_NAME: ${DB_NAME:-mailguard_ai}
       DB_USER: ${DB_USER:-mailguard}
       DB_PASSWORD: ${DB_PASSWORD:-mailguard}
+      # If DATABASE_URL is set (e.g. for Supabase Postgres on Render),
+      # it overrides the MySQL host/port/user/password fields above.
+      # Leave unset for local compose → uses the MySQL service.
+      DATABASE_URL: ${DATABASE_URL:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       AI_SERVICE_URL: http://ai_service:8000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      # AI_PROVIDER controls how the backend classifies emails:
+      #   gemini — uses Google Gemini directly (requires GEMINI_API_KEY)
+      #   http   — calls the ai_service container (default; works offline)
+      AI_PROVIDER: ${AI_PROVIDER:-http}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-true}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-mailguard-ai-2}
+      FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON:-}
+      FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-}
+      FIREBASE_OAUTH_CLIENT_ID: ${FIREBASE_OAUTH_CLIENT_ID:-}
     depends_on:
       mysql:
         condition: service_healthy

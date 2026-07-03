@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 
 from fastapi import FastAPI, HTTPException
@@ -50,12 +51,61 @@ def get_predictor() -> Predictor:
 
 @app.on_event("startup")
 async def _on_startup() -> None:
-    """Warm up the model on startup so the first request is fast."""
-    try:
-        get_predictor()
-        logger.info("AI Service started and model loaded")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Failed to load model on startup: %s", exc)
+    """Warm up the model on startup so the first request is fast.
+
+    If no trained artifact exists yet, automatically train one from the
+    seed dataset shipped in the repo so the service has working predictions
+    on its very first boot. This path is opt-out via MAILGUARD_SKIP_AUTOTRAIN=1.
+    """
+    import asyncio
+
+    def _warmup() -> None:
+        try:
+            get_predictor()
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Predictor load failed during warmup: %s", exc)
+            return
+
+        # Auto-train if every algorithm fallback is missing.
+        models_dir = settings.models_dir
+        has_baseline = any(models_dir.glob("baseline_*.pkl"))
+        has_distilbert = (models_dir / "distilbert_finetuned" / "config.json").exists()
+
+        if has_baseline or has_distilbert:
+            logger.info("AI Service started; trained artifact present")
+            return
+
+        if os.environ.get("MAILGUARD_SKIP_AUTOTRAIN") == "1":
+            logger.warning(
+                "No trained artifact in %s and MAILGUARD_SKIP_AUTOTRAIN=1 — "
+                "service will run with the rule-based fallback.",
+                models_dir,
+            )
+            return
+
+        logger.warning(
+            "No trained artifact in %s — running first-time auto-train "
+            "from the in-repo seed dataset.", models_dir,
+        )
+        try:
+            from ai_service.scripts.train_baseline import train_and_save
+
+            algo = settings.baseline_model
+            if algo not in {"naive_bayes", "svm", "random_forest"}:
+                algo = "naive_bayes"
+            train_and_save(algorithm=algo)
+            logger.info("Auto-train finished; reloading classifier")
+            from ai_service.app.models.registry import registry
+
+            registry.reload()
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Auto-train failed (%s); service will continue with the "
+                "rule-based fallback.", exc,
+            )
+
+    await asyncio.get_event_loop().run_in_executor(None, _warmup)
+    logger.info("AI Service started and model loaded")
 
 
 @app.get("/health", response_model=HealthResponse)
