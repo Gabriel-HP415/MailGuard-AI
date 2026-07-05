@@ -24,4 +24,4 @@ COPY frontend/ /usr/share/nginx/html/
 COPY --from=fetcher /work/frontend/assets/ /usr/share/nginx/html/assets/
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]        </contents>
+CMD ["nginx", "-g", "daemon off;"]

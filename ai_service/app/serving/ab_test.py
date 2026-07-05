@@ -29,7 +29,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from app.config import settings
+from ai_service.app.config import settings
 
 logger = logging.getLogger(__name__)
 

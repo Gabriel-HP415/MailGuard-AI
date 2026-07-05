@@ -61,7 +61,22 @@ class AIServiceClient:
         url = f"{self.base_url}/predict"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(url, json=payload.model_dump())
+                # Convert datetime objects to ISO strings for JSON serialization
+                payload_dict = payload.model_dump()
+                for key, value in payload_dict.items():
+                    if hasattr(value, 'isoformat'):
+                        payload_dict[key] = value.isoformat()
+                
+                # Map backend email fields to AI service format
+                email_data = payload_dict.get('email', {})
+                ai_payload = {
+                    'subject': email_data.get('subject', ''),
+                    'body': email_data.get('body_text') or email_data.get('body_html') or '',
+                    'sender': email_data.get('sender', ''),
+                    'sender_domain': email_data.get('sender_domain'),
+                    'links': email_data.get('links'),
+                }
+                resp = await client.post(url, json=ai_payload)
             resp.raise_for_status()
             return resp.json()
         except httpx.HTTPStatusError as exc:

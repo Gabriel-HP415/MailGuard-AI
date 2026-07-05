@@ -44,8 +44,8 @@ def build_explanation_summary(
         joined = ", ".join(f"'{k['keyword']}'" for k in keywords)
         summary_lines.append(f"Top suspicious phrases: {joined}.")
     if top_url_hits:
-        urls = sorted(top_url_hits, key=lambda x: -x.get("risk", 0))[:3]
-        joined = ", ".join(u["url"] for u in urls)
+        urls = sorted(top_url_hits, key=lambda x: -x.get("weight", 0))[:3]
+        joined = ", ".join(u.get("text", u.get("url", "")) for u in urls)
         summary_lines.append(f"Risky URLs detected: {joined}.")
     if risk.urls >= 20:
         summary_lines.append("URL analysis indicates elevated phishing risk.")

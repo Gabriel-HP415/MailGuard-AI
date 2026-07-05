@@ -1,6 +1,7 @@
 const MAILGUARD_CONFIG = {
   // Default backend URL. Override by setting `localStorage.mg_baseUrl`.
-  defaultBaseUrl: (window.MAILGUARD_API_BASE_URL || "http://localhost:8000/api/v1"),
+  // Uses relative path when running behind nginx proxy, falls back to localhost
+  defaultBaseUrl: (window.MAILGUARD_API_BASE_URL || "/api/v1"),
   storageKeys: {
     baseUrl: "mg_baseUrl",
     token: "mg_token",
