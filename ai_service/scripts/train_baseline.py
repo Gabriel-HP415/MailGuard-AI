@@ -79,7 +79,11 @@ def train_and_save(
 
     if augment:
         before = len(texts)
-        texts, labels = _augment_minority_classes(texts, labels, multiplier=2)
+        # Increase minority classes more aggressively: scam is naturally the
+        # smallest class (Phishing_Email.csv only labels phishing-or-safe, no
+        # extra scam data). Spam is bigger but worth oversampling to balance
+        # the heavy "normal" majority.
+        texts, labels = _augment_minority_classes(texts, labels, multiplier=4)
         logger.info("Data augmentation grew dataset from %d to %d rows", before, len(texts))
 
     clf = BaselineClassifier(algorithm=algorithm)

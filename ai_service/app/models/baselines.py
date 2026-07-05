@@ -12,6 +12,7 @@ import numpy as np
 from scipy.sparse import hstack
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
@@ -38,10 +39,11 @@ class BaselineMetrics:
 class BaselineClassifier:
     """A unified wrapper for NB / SVM / Random Forest + TF-IDF."""
 
-    def __init__(self, algorithm: str = "naive_bayes"):
-        if algorithm not in {"naive_bayes", "svm", "random_forest"}:
+    def __init__(self, algorithm: str = "naive_bayes", class_weight: str | None = "balanced"):
+        if algorithm not in {"naive_bayes", "svm", "random_forest", "logistic_regression"}:
             raise ValueError(f"Unknown baseline algorithm: {algorithm}")
         self.algorithm = algorithm
+        self.class_weight = class_weight
         self.vectorizer_word = TfidfVectorizer(
             ngram_range=(1, 2),
             min_df=2,
@@ -54,19 +56,37 @@ class BaselineClassifier:
             min_df=2,
             sublinear_tf=True,
         )
-        self.model = self._build_model(algorithm)
+        self.model = self._build_model(algorithm, class_weight=class_weight)
         self.classes_: list[str] = []
 
     @staticmethod
-    def _build_model(algorithm: str):
+    def _build_model(algorithm: str, class_weight: str | None = "balanced"):
         if algorithm == "naive_bayes":
+            # Naive Bayes doesn't natively support class_weight on
+            # MultinomialNB. We re-weight the training samples upstream
+            # instead (handled in `fit`).
             return MultinomialNB(alpha=0.1)
         if algorithm == "svm":
+            # CalibratedClassifierCV doesn't forward class_weight to its
+            # base estimator; we rely on sample_weight computed from
+            # class frequencies in `fit`.
             return CalibratedClassifierCV(LinearSVC(C=1.0), cv=3)
+        if algorithm == "logistic_regression":
+            # LR natively supports class_weight — best baseline for
+            # accurate probabilities and balanced decisions.
+            return LogisticRegression(
+                max_iter=2000,
+                C=1.0,
+                class_weight=class_weight or "balanced",
+                solver="lbfgs",
+                random_state=settings.random_seed,
+                n_jobs=-1,
+            )
         return RandomForestClassifier(
             n_estimators=200,
             n_jobs=-1,
             random_state=settings.random_seed,
+            class_weight=class_weight or "balanced_subsample",
         )
 
     @staticmethod
@@ -107,7 +127,28 @@ class BaselineClassifier:
         self.vectorizer_char.fit(tx)
 
         X_train = self._vectorize([self.vectorizer_word, self.vectorizer_char], tx)
-        self.model.fit(X_train, ty)
+
+        # Compute sample_weight from class frequencies to compensate for
+        # the heavily unbalanced dataset (normal is ~75% of merged corpus).
+        # sklearn's `class_weight="balanced"` works natively for RandomForest
+        # but is silently ignored by MultinomialNB and CalibratedClassifierCV,
+        # so we replicate the balancing via sample_weight instead.
+        sw = None
+        try:
+            from sklearn.utils.class_weight import compute_sample_weight
+            sw = compute_sample_weight(
+                class_weight=self.class_weight or "balanced", y=ty,
+            )
+        except Exception:
+            sw = None
+        try:
+            if sw is not None:
+                self.model.fit(X_train, ty, sample_weight=sw)
+            else:
+                self.model.fit(X_train, ty)
+        except TypeError:
+            # Older scikit-learn signatures don't accept sample_weight here.
+            self.model.fit(X_train, ty)
         self.classes_ = [c.value for c in EmailClass]
 
         if not eval_split or len(vy) == 0:
@@ -142,6 +183,7 @@ class BaselineClassifier:
             pickle.dump(
                 {
                     "algorithm": self.algorithm,
+                    "class_weight": self.class_weight,
                     "vectorizer_word": self.vectorizer_word,
                     "vectorizer_char": self.vectorizer_char,
                     "model": self.model,
@@ -156,7 +198,10 @@ class BaselineClassifier:
         """Load a persisted model from disk."""
         with open(path, "rb") as f:
             data = pickle.load(f)
-        inst = cls(algorithm=data["algorithm"])
+        inst = cls(
+            algorithm=data["algorithm"],
+            class_weight=data.get("class_weight", "balanced"),
+        )
         inst.vectorizer_word = data["vectorizer_word"]
         inst.vectorizer_char = data["vectorizer_char"]
         inst.model = data["model"]

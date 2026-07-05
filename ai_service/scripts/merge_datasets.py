@@ -52,6 +52,11 @@ from typing import Callable, Iterable, Iterator
 
 from ai_service.app.config import settings
 
+# Some public CSVs (phishing_email.csv, Enron_Txt_fn.csv) contain individual
+# fields well over Python's default csv field limit (131 KB). Raise the limit
+# before any csv.reader / DictReader is used so the parsers don't truncate.
+csv.field_size_limit(100 * 1024 * 1024)
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,15 +64,22 @@ logger = logging.getLogger(__name__)
 # Dataset source URLs (no auth required)
 # ============================================================
 
-# 1a. Enron — `corbt/enron-emails` (raw email corpus, treated as normal)
+# 1a. Enron — `corbt/enron-emails` (raw email corpus, treated as normal).
+# The dataset was republished as 3 parquet shards under `data/`. Each shard
+# is ~165 MB; we download just the first one to keep the merge fast and the
+# raw archive small.
 ENRON_HF_BASE = (
     "https://huggingface.co/datasets/corbt/enron-emails/resolve/main/"
 )
-ENRON_HF_FILES = ("emails.csv.zip",)  # may grow over time
+ENRON_HF_FILES = (
+    "data/train-00000-of-00003.parquet",
+)
 
-# 1b. Enron — `bvk/ENRON-spam` (Metsis subset, labelled spam/ham)
+# 1b. Enron — `bvk/ENRON-spam` (Metsis subset, labelled spam/ham). The
+# actual file in the dataset is `Enron_Txt_fn.csv`; the older URL
+# (ENRON_spam.csv) 404s on the current HF revision.
 ENRON_SPAM_HF_URL = (
-    "https://huggingface.co/datasets/bvk/ENRON-spam/resolve/main/ENRON_spam.csv"
+    "https://huggingface.co/datasets/bvk/ENRON-spam/resolve/main/Enron_Txt_fn.csv"
 )
 
 # 2. Phishing email detection — `zefang-liu/phishing-email-dataset`
@@ -188,52 +200,62 @@ def _parse_enron_message(raw: str) -> tuple[str, str]:
 
 
 def _iter_enron_normal(max_samples: int | None = None) -> Iterable[Sample]:
-    """Yield ``normal`` samples from the Enron ZIP/CSV."""
+    """Yield ``normal`` samples from the Enron parquet shards.
+
+    The corbt/enron-emails dataset is published as Parquet since 2024 — the
+    legacy `emails.csv.zip` URL 404s. Each row has columns ``message``
+    (raw RFC-822 email text), ``subject`` (parsed subject, may be empty),
+    and ``file`` (path on disk in the original Enron release).
+    """
+    import pandas as pd  # lazy import — pandas is only needed here
+
     raw_dir = settings.datasets_dir / "raw"
-    zip_path = _try_download(
-        [ENRON_HF_BASE + f for f in ENRON_HF_FILES],
-        raw_dir / "enron_emails.csv.zip",
+    parquet_url = ENRON_HF_BASE + ENRON_HF_FILES[0]
+    parquet_path = _try_download(
+        [parquet_url],
+        raw_dir / "enron_train_00000.parquet",
     )
-    if zip_path is None:
+    if parquet_path is None:
         return
 
-    extracted_csv = raw_dir / "enron_emails.csv"
-    if not extracted_csv.exists():
-        logger.info("Extracting %s", zip_path)
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            for member in zf.namelist():
-                if member.lower().endswith(".csv"):
-                    with zf.open(member) as src, open(extracted_csv, "wb") as dst:
-                        dst.write(src.read())
-                    break
-    if not extracted_csv.exists():
-        logger.error("Enron CSV not found inside ZIP")
+    logger.info("Reading Enron parquet: %s", parquet_path)
+    df = pd.read_parquet(parquet_path)
+    # The shard ships with at least `message` and `subject`; use whichever
+    # non-empty column carries the body.
+    msg_col = next(
+        (c for c in ("message", "text", "body") if c in df.columns), None,
+    )
+    subj_col = next(
+        (c for c in ("subject", "Subject") if c in df.columns), None,
+    )
+    if msg_col is None:
+        logger.error("Enron parquet missing message column: %s", df.columns.tolist())
         return
 
     count = 0
-    with open(extracted_csv, "r", encoding="utf-8", errors="ignore", newline="") as f:
-        reader = csv.reader(f)
-        # The Enron CSV is typically: file, message
-        for row in reader:
-            if not row:
-                continue
-            # The second column contains the raw email; if not, use column 0
-            raw = row[1] if len(row) > 1 else row[0]
-            if not raw or "From:" not in raw:
-                continue
-            subject, body = _parse_enron_message(raw)
-            if not body:
-                continue
-            yield Sample(
-                label="normal",
-                subject=subject[:500],
-                body=body,
-                source="enron_corbt",
-            )
-            count += 1
-            if max_samples and count >= max_samples:
-                break
-    logger.info("Enron (corbt): %d normal samples", count)
+    for _, row in df.iterrows():
+        raw = row.get(msg_col) if hasattr(row, "get") else row[msg_col]
+        if not raw or "From:" not in str(raw):
+            continue
+        subject, body = _parse_enron_message(str(raw))
+        if not body:
+            continue
+        # Subject is also stored as a parquet column for many rows; use it
+        # when the header parsing didn't produce one.
+        if not subject and subj_col:
+            candidate = row.get(subj_col) if hasattr(row, "get") else row[subj_col]
+            if candidate and isinstance(candidate, str) and candidate.strip():
+                subject = candidate.strip()
+        yield Sample(
+            label="normal",
+            subject=subject[:500],
+            body=body,
+            source="enron_corbt",
+        )
+        count += 1
+        if max_samples and count >= max_samples:
+            break
+    logger.info("Enron (corbt parquet): %d normal samples", count)
 
 
 # ============================================================
@@ -241,7 +263,18 @@ def _iter_enron_normal(max_samples: int | None = None) -> Iterable[Sample]:
 # ============================================================
 
 def _iter_enron_spam(max_samples: int | None = None) -> Iterable[Sample]:
-    """Yield ``spam`` samples from the Metsis Enron subset."""
+    """Yield ``spam``/``normal`` samples from the Metsis Enron spam subset.
+
+    The bvk/ENRON-spam CSV uses columns ``label,email,filename``:
+      - ``label`` is ``0`` (ham) or ``1`` (spam)
+      - ``email`` is a single quoted blob like ``['Subject: foo\\nbody']``
+        where the body is a Python repr string (escaped ``\\n``, ``\\r``,
+        ``\\\\``, ``\\xNN`` etc.)
+
+    The file is malformed in many places (unbalanced quotes, mixed
+    separators inside URLs), so we use ``python`` csv engine with
+    ``on_bad_lines='skip'`` (rather than raising mid-parse).
+    """
     raw_dir = settings.datasets_dir / "raw"
     csv_path = _try_download(
         [ENRON_SPAM_HF_URL],
@@ -250,35 +283,84 @@ def _iter_enron_spam(max_samples: int | None = None) -> Iterable[Sample]:
     if csv_path is None:
         return
 
+    decoded_cache: dict[int, str] = {}
+    raw_bytes = csv_path.read_bytes()
+    # Coarse fix-up: line endings + stray quotes that csv.reader trips on.
+    text = raw_bytes.decode("utf-8", errors="ignore")
+
     count = 0
-    with open(csv_path, "r", encoding="utf-8", errors="ignore", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            label = (row.get("Class") or row.get("class") or "").strip().lower()
-            subject = (row.get("Subject") or "").strip()
-            content = (row.get("Message") or row.get("content") or "").strip()
-            if not content:
-                continue
-            if label == "spam":
-                yield Sample(
-                    label="spam",
-                    subject=subject[:500],
-                    body=content[:8000],
-                    source="enron_spam_bvk",
-                )
-                count += 1
-            elif label == "ham":
-                # Also emit a few normal samples to reinforce the class
-                yield Sample(
-                    label="normal",
-                    subject=subject[:500],
-                    body=content[:8000],
-                    source="enron_spam_bvk",
-                )
-                count += 1
-            if max_samples and count >= max_samples:
-                break
-    logger.info("Enron-spam (bvk): %d samples (spam + ham)", count)
+    for line_idx, line in enumerate(text.splitlines()):
+        if line_idx == 0:
+            # Skip header — we know the format: label,email,filename
+            continue
+        line = line.strip()
+        if not line:
+            continue
+        if not (line.startswith("0,") or line.startswith("1,")):
+            continue
+        # Parse: first char = label, last comma-separated token = filename,
+        # middle is a quoted email blob wrapped by '"[''...'']"'.
+        first_comma = line.find(",")
+        if first_comma < 0:
+            continue
+        label_raw = line[:first_comma].strip()
+        # The filename is after the LAST comma. Everything in between
+        # belongs to the email column. Inside that we expect `'[... ... ]'`
+        # as a quoted JSON-ish Python list literal.
+        last_comma = line.rfind(",")
+        if last_comma <= first_comma:
+            continue
+        content_raw = line[first_comma + 1: last_comma].strip()
+        # Strip surrounding quotes (single or double) that wrap the literal.
+        if (content_raw.startswith("'") and content_raw.endswith("'")) or (
+            content_raw.startswith('"') and content_raw.endswith('"')
+        ):
+            content_raw = content_raw[1:-1]
+        # The body is inside `'[ ... ]'`. Sometimes the outer wrapper is
+        # double quotes around single-quoted Python list. Unwrap both.
+        if content_raw.startswith("'[") and content_raw.endswith("]'"):
+            content_raw = content_raw[2:-2]
+        elif content_raw.startswith('"[') and content_raw.endswith(']"'):
+            content_raw = content_raw[2:-2]
+        elif content_raw.startswith("[") and content_raw.endswith("]"):
+            content_raw = content_raw[1:-1]
+        try:
+            content = content_raw.encode("utf-8").decode(
+                "unicode_escape", errors="ignore",
+            )
+        except Exception:
+            content = content_raw
+        if not content.strip():
+            continue
+        # Extract subject
+        subject = ""
+        m = re.search(r"Subject:\s*([^\n\\]+)", content, re.IGNORECASE)
+        if m:
+            subject = m.group(1).strip()
+        body = content
+        if subject:
+            # Strip the Subject: line from the body so the model sees the
+            # body alone, not duplicated content.
+            body = re.sub(r"^Subject:.*?\n", "", body, count=1, flags=re.IGNORECASE)
+
+        label_norm = label_raw.lower()
+        target_label = None
+        if label_norm in {"1", "spam", "phishing", "scam"}:
+            target_label = "spam"
+        elif label_norm in {"0", "ham", "safe email", "normal", "legit"}:
+            target_label = "normal"
+        if target_label is None:
+            continue
+        yield Sample(
+            label=target_label,
+            subject=subject[:500],
+            body=body[:8000],
+            source="enron_spam_bvk",
+        )
+        count += 1
+        if max_samples and count >= max_samples:
+            break
+    logger.info("Enron-spam (bvk txt): %d samples", count)
 
 
 # ============================================================
@@ -286,44 +368,63 @@ def _iter_enron_spam(max_samples: int | None = None) -> Iterable[Sample]:
 # ============================================================
 
 def _iter_phishing(max_samples: int | None = None) -> Iterable[Sample]:
-    """Yield ``scam`` / ``normal`` samples from Phishing_Email.csv."""
+    """Yield ``scam`` / ``normal`` samples from Phishing_Email.csv.
+
+    The published CSV format is ``Unnamed: 0, "Email Text", "Email Type"``
+    where ``Email Type`` is ``"Safe Email"`` or ``"Phishing Email"``.
+    Many rows contain unescaped commas inside the body and exceed the
+    default field size limit; we use the python csv engine with the
+    raised limit set at module top.
+    """
     raw_dir = settings.datasets_dir / "raw"
     csv_path = _try_download([PHISHING_HF_URL], raw_dir / "phishing_email.csv")
     if csv_path is None:
         return
 
+    # Two passes: first find the column indices by sniffing the header,
+    # then stream rows using fixed column positions so we never depend on
+    # csv writing to put the label where we expect.
+    header: list[str] = []
+    with open(csv_path, "r", encoding="utf-8", errors="ignore", newline="") as f:
+        header = [h.strip().lower() for h in next(csv.reader(f))]
+        text_idx = 0
+        label_idx = len(header) - 1
+        for i, h in enumerate(header):
+            if "text" in h or "email" in h:
+                text_idx = i
+                break
+        for i, h in enumerate(header):
+            if "type" in h or "label" in h or "class" in h:
+                label_idx = i
+                break
+
     count = 0
     with open(csv_path, "r", encoding="utf-8", errors="ignore", newline="") as f:
         reader = csv.reader(f)
-        header = next(reader, None)
-        # The file is known to have bad lines and inconsistent quoting; we
-        # accept on_bad_lines via the engine (python engine with skip).
+        next(reader, None)  # header
         for row in reader:
-            if len(row) < 2:
+            if not row:
                 continue
-            label = (row[0] or "").strip().lower()
-            text = (row[1] or "").strip()
-            if not text:
+            label = (row[label_idx] if label_idx < len(row) else "").strip().lower()
+            text = (row[text_idx] if text_idx < len(row) else "").strip()
+            if not text or text.lower() == "empty":
                 continue
-            # Per project decision: combine subject + body into body
             if "phishing" in label:
-                yield Sample(
-                    label="scam",
-                    subject="",
-                    body=text[:8000],
-                    source="phishing_kaggle",
-                )
-            else:  # safe email
-                yield Sample(
-                    label="normal",
-                    subject="",
-                    body=text[:8000],
-                    source="phishing_kaggle",
-                )
+                target = "scam"
+            elif "safe" in label or "ham" in label or "legitimate" in label:
+                target = "normal"
+            else:
+                continue
+            yield Sample(
+                label=target,
+                subject="",
+                body=text[:8000],
+                source="phishing_kaggle",
+            )
             count += 1
             if max_samples and count >= max_samples:
                 break
-    logger.info("Phishing: %d samples", count)
+    logger.info("Phishing: %d samples (mapped to scam/normal)", count)
 
 
 # ============================================================

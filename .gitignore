@@ -54,6 +54,8 @@ mysql_data/
 *.bin
 models/artifacts/
 models/checkpoints/
+ai_service/models/artifacts/
+ai_service/models/checkpoints/
 !models/.gitkeep
 
 # Datasets
@@ -64,6 +66,10 @@ data/*.tsv
 data/*.json
 !data/.gitkeep
 !data/README.md
+# AI service training data (raw Enron/Phishing/SMS downloads + merged CSV)
+ai_service/datasets/raw/
+ai_service/datasets/*.csv
+ai_service/datasets/eval_report/report.json
 
 # Logs
 logs/
