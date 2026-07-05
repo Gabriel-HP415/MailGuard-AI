@@ -28,10 +28,53 @@ const STORAGE_KEYS = {
 const DEFAULT_BASE_URL = "https://mailguard-ai-y0nh.onrender.com/api/v1";
 const DEFAULT_PORT_BASE_URL = "http://127.0.0.1:8003/api/v1";
 
-// Detect dev port by inspecting any stored base URL; fall back to prod.
+// Additional URLs we'll try, in order, when no base URL has been stored.
+// If one of them responds on /health, we persist it as the new default so
+// the popup shows the right one on next open.
+const CANDIDATE_LOCAL_URLS = [
+  "http://127.0.0.1:8003/api/v1",
+  "http://localhost:8003/api/v1",
+  "http://127.0.0.1:8000/api/v1",
+  "http://localhost:8000/api/v1",
+];
+
+async function probeHealth(baseUrl) {
+  try {
+    const resp = await fetch(`${baseUrl}/health`, {
+      method: "GET",
+      cache: "no-store",
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return data && data.status === "ok";
+  } catch {
+    return false;
+  }
+}
+
+async function autoDetectBaseUrl() {
+  // Run all candidates in parallel; pick the first one that responds OK.
+  const results = await Promise.all(
+    CANDIDATE_LOCAL_URLS.map(async (url) => ({
+      url,
+      ok: await probeHealth(url),
+    })),
+  );
+  const working = results.find((r) => r.ok);
+  if (working) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.BASE_URL]: working.url });
+    return working.url;
+  }
+  return null;
+}
+
 async function getBaseUrl() {
   const stored = await chrome.storage.local.get([STORAGE_KEYS.BASE_URL]);
-  return stored[STORAGE_KEYS.BASE_URL] || DEFAULT_BASE_URL;
+  if (stored[STORAGE_KEYS.BASE_URL]) return stored[STORAGE_KEYS.BASE_URL];
+  // First-time user or after a reset: try to auto-detect a local backend.
+  const detected = await autoDetectBaseUrl();
+  return detected || DEFAULT_BASE_URL;
 }
 
 async function getAuthHeader() {
@@ -43,36 +86,62 @@ async function getAuthHeader() {
 async function postJson(path, body) {
   const baseUrl = await getBaseUrl();
   const auth = await getAuthHeader();
-  const resp = await fetch(`${baseUrl}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...auth },
-    body: JSON.stringify(body),
-  });
-  const text = await resp.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch {}
-  if (!resp.ok) {
-    const msg = (data && data.error && data.error.message) || text || `HTTP ${resp.status}`;
-    const err = new Error(msg);
-    err.status = resp.status;
-    throw err;
+  let resp;
+  try {
+    resp = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const err2 = new Error(
+      `Cannot reach backend at ${baseUrl}. ` +
+      `Is the docker container running and port 8003 forwarded? (${err.message})`
+    );
+    err2.status = 0;
+    throw err2;
   }
-  return data;
+  return parseResponse(resp);
 }
 
 async function getJson(path) {
   const baseUrl = await getBaseUrl();
   const auth = await getAuthHeader();
-  const resp = await fetch(`${baseUrl}${path}`, {
-    headers: { "Content-Type": "application/json", ...auth },
-  });
+  let resp;
+  try {
+    resp = await fetch(`${baseUrl}${path}`, {
+      headers: { "Content-Type": "application/json", ...auth },
+    });
+  } catch (err) {
+    const err2 = new Error(
+      `Cannot reach backend at ${baseUrl}. (${err.message})`
+    );
+    err2.status = 0;
+    throw err2;
+  }
+  return parseResponse(resp);
+}
+
+async function parseResponse(resp) {
   const text = await resp.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch {}
   if (!resp.ok) {
-    const msg = (data && data.error && data.error.message) || text || `HTTP ${resp.status}`;
+    const raw = (data && data.error && data.error.message) || text || `HTTP ${resp.status}`;
+    // Be helpful about common endpoints
+    let msg = raw;
+    if (resp.status === 401 && /credentials/i.test(String(raw))) {
+      msg = "Wrong email or password.";
+    } else if (resp.status === 422) {
+      msg = `Invalid input: ${raw}`;
+    } else if (resp.status === 429) {
+      msg = "Too many requests — wait a minute and try again.";
+    } else if (resp.status >= 500) {
+      msg = `Server error: ${raw}`;
+    }
     const err = new Error(msg);
     err.status = resp.status;
+    err.body = data;
     throw err;
   }
   return data;

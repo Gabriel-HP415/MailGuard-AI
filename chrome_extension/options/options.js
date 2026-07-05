@@ -100,10 +100,25 @@
         type: action,
         payload,
       });
-      if (!result.ok) throw new Error(result.error || "Auth failed");
+      if (!result.ok) {
+        // Map common errors to actionable text
+        const err = String(result.error || "");
+        let msg = err;
+        if (/401/i.test(err)) {
+          msg = "Wrong email or password (or account doesn't exist). Click Register to create one.";
+        } else if (/422/i.test(err)) {
+          msg = `Validation error: ${err.replace(/^422:?\s*/i, "")}`;
+        } else if (/network|failed.*fetch|load.*network/i.test(err)) {
+          msg = `Cannot reach backend at ${api.baseUrl}. Is docker container running?`;
+        } else if (/429/i.test(err)) {
+          msg = "Too many attempts. Wait a minute.";
+        }
+        throw new Error(msg);
+      }
       await refreshAuth();
       await Promise.all([loadWhitelist(), loadBlacklist(), loadServiceStatus()]);
       passwordInput.value = "";
+      setAuthStatus(`Signed in as ${payload.email}`, true);
     } catch (err) {
       setAuthStatus(`Error: ${err.message}`);
     }

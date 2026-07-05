@@ -64,6 +64,67 @@ body {
   background: rgba(220, 38, 38, 0.7);
 }
 
+.mg-pill--warn {
+  background: rgba(217, 119, 6, 0.7);
+}
+
+.mg-popup__status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.mg-popup__label {
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.mg-popup__code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  word-break: break-all;
+}
+
+.mg-popup__code-block {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  overflow-x: auto;
+  margin: 6px 0 0;
+}
+
+.mg-popup__status {
+  font-size: 12px;
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  min-height: 18px;
+  word-break: break-word;
+}
+
+.mg-btn--tiny {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 11px;
+  margin-top: 0;
+}
+
 .mg-popup__main {
   padding: 12px 14px 16px;
 }
