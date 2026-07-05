@@ -1,0 +1,20 @@
+# MailGuard-AI — Backend development-only deps
+#
+# Installed on top of requirements.txt for `Dockerfile.dev` so devs can run
+# tests + lint without polluting prod images.
+
+# Test framework + plugins
+-r requirements.txt
+
+# Linting / formatting
+ruff==0.7.2
+black==24.10.0
+
+# Test fixtures
+factory-boy==3.3.1
+faker==30.0.0
+httpx==0.27.2                # already pinned in requirements.txt; explicit here for clarity
+freezegun==1.5.1             # deterministic time-based assertions
+
+# API client testing
+respx==0.21.1                # mock httpx for AI service / external calls

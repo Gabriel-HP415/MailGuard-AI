@@ -15,7 +15,10 @@ from app.core.config import settings
 from app.core.constants import ModelAlgorithm, UserRole
 from app.core.security import hash_password
 from app.database.connection import SessionLocal
+from app.models.feedback import Feedback
+from app.models.list_entry import ListEntry
 from app.models.model_version import ModelVersion
+from app.models.prediction import Prediction
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,34 @@ def seed_admin(db: Session) -> Optional[User]:
     db.refresh(admin)
     logger.info("Created admin user: %s", admin.email)
     return admin
+
+
+def seed_demo_user(db: Session) -> Optional[User]:
+    """Create a demo end-user so devs have something to log in with.
+
+    Only created in dev mode (settings.app_env == 'development')."""
+    if settings.app_env != "development":
+        return None
+
+    demo_email = "demo@localhost.dev"
+    if db.query(User).filter(User.email == demo_email).first():
+        return None
+
+    demo = User(
+        email=demo_email,
+        username="demo",
+        password_hash=hash_password("Demo1234!"),
+        full_name="Demo User",
+        role=UserRole.USER,
+        is_active=True,
+        is_verified=True,
+        auth_provider="email",
+    )
+    db.add(demo)
+    db.commit()
+    db.refresh(demo)
+    logger.info("Created demo user: %s / password=Demo1234!", demo_email)
+    return demo
 
 
 def seed_default_model(db: Session) -> Optional[ModelVersion]:
@@ -75,6 +106,7 @@ def run_seed() -> None:
     db = SessionLocal()
     try:
         seed_admin(db)
+        seed_demo_user(db)
         seed_default_model(db)
     finally:
         db.close()
