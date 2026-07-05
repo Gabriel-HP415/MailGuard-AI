@@ -1,0 +1,14 @@
+{
+  "extension_name": {
+    "message": "MailGuard-AI — Bảo vệ Email",
+    "description": "Tên hiển thị của extension."
+  },
+  "extension_description": {
+    "message": "Phát hiện email lừa đảo, phishing và spam theo thời gian thực bằng AI.",
+    "description": "Mô tả extension."
+  },
+  "popup_title": {
+    "message": "MailGuard-AI — Bảo vệ Email",
+    "description": "Tooltip cho biểu tượng trên thanh công cụ."
+  }
+}

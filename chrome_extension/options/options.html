@@ -89,6 +89,50 @@
         </ul>
       </section>
 
+      <!-- Gmail integration -->
+      <section class="mg-card" id="gmail-card">
+        <h2>Gmail integration</h2>
+        <p class="mg-options__hint">
+          Connect your Gmail account so MailGuard-AI can scan recent messages
+          and surface phishing / scam attempts directly in your inbox.
+        </p>
+        <div class="mg-options__row">
+          <span id="gmail-options-pill" class="mg-pill mg-pill--offline">Checking…</span>
+          <span id="gmail-options-last" class="mg-options__hint mg-options__hint--muted"></span>
+        </div>
+        <div class="mg-options__row">
+          <button type="button" id="gmail-options-connect" class="mg-btn mg-btn--google">
+            <span>Connect Gmail</span>
+          </button>
+          <button type="button" id="gmail-options-disconnect" class="mg-btn mg-btn--danger" hidden>
+            <span>Disconnect</span>
+          </button>
+          <button type="button" id="gmail-options-scan" class="mg-btn mg-btn--primary" disabled>
+            <span>Scan inbox now</span>
+          </button>
+        </div>
+        <fieldset class="mg-options__fieldset">
+          <legend>Scanning mode</legend>
+          <label class="mg-options__radio">
+            <input type="radio" name="gmail-mode" value="passive" />
+            <span>
+              <strong>Passive</strong> — only classify emails when you open them.
+            </span>
+          </label>
+          <label class="mg-options__radio">
+            <input type="radio" name="gmail-mode" value="active" />
+            <span>
+              <strong>Active</strong> — auto-scan the latest messages every 5 minutes.
+            </span>
+          </label>
+        </fieldset>
+        <label class="mg-options__field">
+          <span>Batch size (1–100)</span>
+          <input type="number" id="gmail-options-batch" min="1" max="100" value="25" />
+        </label>
+        <p id="gmail-options-status" class="mg-options__status"></p>
+      </section>
+
       <!-- Service status -->
       <section class="mg-card">
         <h2>Service status</h2>

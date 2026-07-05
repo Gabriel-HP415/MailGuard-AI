@@ -1,0 +1,78 @@
+{
+  "model": "baseline_naive_bayes",
+  "dataset": "D:\\HOC TAP\\doanAI\\MailGuard-AI\\ai_service\\datasets\\merged_dataset.csv",
+  "total_samples": 4000,
+  "class_counts": {
+    "normal": 2826,
+    "notification": 219,
+    "spam": 679,
+    "scam": 276
+  },
+  "metrics": {
+    "accuracy": 0.94925,
+    "classes": [
+      "normal",
+      "notification",
+      "spam",
+      "scam"
+    ],
+    "per_class": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.9865534324133051,
+        "f1": 0.9932312076950481,
+        "support": 2826
+      },
+      "notification": {
+        "precision": 0.9954545454545455,
+        "recall": 1.0,
+        "f1": 0.9977220956719818,
+        "support": 219
+      },
+      "spam": {
+        "precision": 0.8449720670391061,
+        "recall": 0.8910162002945509,
+        "f1": 0.867383512544803,
+        "support": 679
+      },
+      "scam": {
+        "precision": 0.6702898550724637,
+        "recall": 0.6702898550724637,
+        "f1": 0.6702898550724637,
+        "support": 276
+      }
+    },
+    "macro": {
+      "precision": 0.8776791168915288,
+      "recall": 0.8869648719450799,
+      "f1": 0.8821566677460742
+    },
+    "weighted": {},
+    "confusion_matrix": [
+      [
+        2788,
+        1,
+        20,
+        17
+      ],
+      [
+        0,
+        219,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        605,
+        74
+      ],
+      [
+        0,
+        0,
+        91,
+        185
+      ]
+    ]
+  }
+}

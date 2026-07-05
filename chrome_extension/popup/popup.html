@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=380" />
@@ -12,7 +12,15 @@
         <span class="mg-popup__logo">🛡️</span>
         <h1>MailGuard-AI</h1>
       </div>
-      <span id="status-pill" class="mg-pill mg-pill--offline">Offline</span>
+      <div class="mg-popup__header-actions">
+        <!-- Language toggle -->
+        <button id="lang-toggle" type="button" class="mg-lang-toggle"
+                aria-label="Switch language" title="Switch language">
+          <span id="lang-toggle-label">VI</span>
+        </button>
+        <span id="status-pill" class="mg-pill mg-pill--offline"
+              data-i18n="header.offline">Ngoại tuyến</span>
+      </div>
     </header>
 
     <main class="mg-popup__main">
@@ -20,45 +28,42 @@
            the popup is actually using. -->
       <section class="mg-popup__status-strip">
         <div>
-          <span class="mg-popup__label">Backend:</span>
+          <span class="mg-popup__label" data-i18n="status.backend_label">Backend:</span>
           <code id="backend-url" class="mg-popup__code">…</code>
         </div>
-        <button id="test-connection-btn" type="button" class="mg-btn mg-btn--tiny">
-          Test
-        </button>
+        <button id="test-connection-btn" type="button" class="mg-btn mg-btn--tiny"
+                data-i18n="status.test_btn">Kiểm tra</button>
       </section>
 
       <!-- Logged out: email + password (primary, universal flow) -->
       <section id="auth-section" class="mg-card">
-        <h2>Sign in</h2>
-        <p class="mg-popup__hint">
-          Use the email/password from your MailGuard-AI backend. Works on
-          every Chrome version without needing Google OAuth.
+        <h2 data-i18n="auth.heading">Đăng nhập</h2>
+        <p class="mg-popup__hint" data-i18n="auth.hint">
+          Dùng email/mật khẩu từ backend MailGuard-AI. Hoạt động trên mọi phiên bản Chrome, không cần Google OAuth.
         </p>
 
         <form id="login-form">
           <label>
-            <span>Email</span>
+            <span data-i18n="auth.email">Email</span>
             <input type="email" id="email" required autocomplete="username"
                    placeholder="demo@localhost.dev" />
           </label>
           <label>
-            <span>Password</span>
+            <span data-i18n="auth.password">Mật khẩu</span>
             <input type="password" id="password" required minlength="8"
                    autocomplete="current-password" placeholder="Demo1234!" />
           </label>
           <button type="submit" class="mg-btn mg-btn--primary">
-            <span id="login-btn-label">Sign in</span>
+            <span id="login-btn-label" data-i18n="auth.signin">Đăng nhập</span>
           </button>
         </form>
 
-        <p id="auth-status" class="mg-popup__status">Ready.</p>
+        <p id="auth-status" class="mg-popup__status"></p>
 
         <details class="mg-popup__advanced">
-          <summary>Need a different backend?</summary>
-          <p class="mg-popup__hint mg-popup__hint--muted">
-            The URL above is read from <code>chrome.storage.local.mg_base_url</code>.
-            Open Settings to change it, or run in DevTools console:
+          <summary data-i18n="auth.advanced_backend">Cần đổi backend khác?</summary>
+          <p class="mg-popup__hint mg-popup__hint--muted" data-i18n-html="auth.advanced_hint">
+            URL phía trên được đọc từ <code>chrome.storage.local.mg_base_url</code>. Mở Cài đặt để đổi, hoặc chạy trong DevTools console:
           </p>
           <pre class="mg-popup__code-block">chrome.storage.local.set(
   { mg_base_url: "http://127.0.0.1:8003/api/v1" },
@@ -67,19 +72,17 @@
         </details>
 
         <details class="mg-popup__advanced">
-          <summary>Sign in with Google (Gmail OAuth)</summary>
-          <p class="mg-popup__hint mg-popup__hint--muted">
-            Requires Chrome Extension OAuth client configured in your Google
-            Cloud project. The classic service worker doesn't route the Gmail
-            flow yet — use email/password above for now.
+          <summary data-i18n="auth.oauth_heading">Đăng nhập bằng Google (Gmail OAuth)</summary>
+          <p class="mg-popup__hint mg-popup__hint--muted" data-i18n="auth.oauth_hint">
+            Cần OAuth client của Chrome Extension trong Google Cloud project. Service worker cổ điển chưa hỗ trợ luồng Gmail — tạm thời hãy dùng email/mật khẩu phía trên.
           </p>
           <button id="google-signin-btn" class="mg-btn mg-btn--google" type="button" disabled>
-            <span>Connect Gmail (coming soon)</span>
+            <span data-i18n="auth.oauth_btn">Kết nối Gmail (sắp ra mắt)</span>
           </button>
         </details>
 
         <p class="mg-popup__hint">
-          <a href="#" id="open-options">⚙ Settings</a>
+          <a href="#" id="open-options" data-i18n="settings.link">⚙ Cài đặt</a>
         </p>
       </section>
 
@@ -88,7 +91,11 @@
         <div class="mg-popup__user">
           <img id="user-avatar" class="mg-popup__avatar" alt="" src="" />
           <div>
-            <h2>Hello, <span id="user-name">user</span> <span id="user-emoji">👋</span></h2>
+            <h2>
+              <span data-i18n="dashboard.greeting">Xin chào,</span>
+              <span id="user-name"></span>
+              <span data-i18n="dashboard.wave">👋</span>
+            </h2>
             <p id="user-email" class="mg-popup__user-email"></p>
             <p id="user-provider" class="mg-popup__user-provider"></p>
           </div>
@@ -96,20 +103,59 @@
         <div class="mg-stats">
           <div class="mg-stat">
             <span class="mg-stat__num" id="stat-total">-</span>
-            <span class="mg-stat__label">Predictions</span>
+            <span class="mg-stat__label" data-i18n="stat.predictions">Lượt quét</span>
           </div>
           <div class="mg-stat">
             <span class="mg-stat__num" id="stat-risks">-</span>
-            <span class="mg-stat__label">Risks</span>
+            <span class="mg-stat__label" data-i18n="stat.risks">Cảnh báo</span>
           </div>
           <div class="mg-stat">
             <span class="mg-stat__num" id="stat-avg">-</span>
-            <span class="mg-stat__label">Avg risk</span>
+            <span class="mg-stat__label" data-i18n="stat.avg_risk">Rủi ro TB</span>
           </div>
         </div>
         <ul id="recent-list" class="mg-popup__recent"></ul>
+
+        <!-- Gmail management -->
+        <div class="mg-popup__divider-text" data-i18n="gmail.heading">Gmail</div>
+        <div class="mg-gmail__row">
+          <span id="gmail-connection-pill" class="mg-pill mg-pill--offline"
+                data-i18n="gmail.not_connected">Chưa kết nối</span>
+          <span id="gmail-mode-label" class="mg-popup__hint mg-popup__hint--muted"></span>
+        </div>
+        <p id="gmail-last-scan" class="mg-popup__hint mg-popup__hint--muted"
+           data-i18n="empty.scan">Chưa quét lần nào.</p>
         <div class="mg-popup__actions">
-          <button id="logout-btn" type="button" class="mg-btn mg-btn--danger">Sign out</button>
+          <button id="gmail-connect-btn" type="button" class="mg-btn mg-btn--google">
+            <span data-i18n="gmail.connect">Kết nối Gmail</span>
+          </button>
+          <button id="gmail-disconnect-btn" type="button" class="mg-btn mg-btn--danger" hidden>
+            <span data-i18n="gmail.disconnect">Ngắt kết nối</span>
+          </button>
+        </div>
+        <div class="mg-popup__actions">
+          <button id="gmail-scan-btn" type="button" class="mg-btn mg-btn--primary" disabled>
+            <span data-i18n="gmail.scan_now">Quét hộp thư ngay</span>
+          </button>
+        </div>
+        <div class="mg-gmail__mode-row">
+          <label class="mg-gmail__mode-toggle">
+            <input type="checkbox" id="gmail-mode-toggle" />
+            <span data-i18n="gmail.active_toggle">Quét tự động (mỗi 5 phút)</span>
+          </label>
+          <label class="mg-gmail__mode-toggle">
+            <input type="checkbox" id="gmail-notify-toggle" />
+            <span data-i18n="gmail.active_toggle_notify">Thông báo khi phát hiện email nguy hiểm</span>
+          </label>
+        </div>
+        <ul id="gmail-scan-list" class="mg-popup__recent">
+          <li class="mg-list__empty" data-i18n="empty.scan">Chưa quét lần nào.</li>
+        </ul>
+        <p id="gmail-status" class="mg-popup__status" hidden></p>
+
+        <div class="mg-popup__actions">
+          <button id="logout-btn" type="button" class="mg-btn mg-btn--danger"
+                  data-i18n="auth.signout">Đăng xuất</button>
         </div>
       </section>
     </main>

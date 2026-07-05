@@ -30,6 +30,15 @@
   const blacklistList = document.getElementById("blacklist-list");
   const serviceStatus = document.getElementById("service-status");
 
+  const gmailPill = document.getElementById("gmail-options-pill");
+  const gmailLast = document.getElementById("gmail-options-last");
+  const gmailConnectBtn = document.getElementById("gmail-options-connect");
+  const gmailDisconnectBtn = document.getElementById("gmail-options-disconnect");
+  const gmailScanBtn = document.getElementById("gmail-options-scan");
+  const gmailBatchInput = document.getElementById("gmail-options-batch");
+  const gmailStatus = document.getElementById("gmail-options-status");
+  const gmailModeRadios = document.querySelectorAll('input[name="gmail-mode"]');
+
   // Init UI from storage
   baseUrlInput.value = api.baseUrl || "";
 
@@ -271,6 +280,101 @@
     }
   });
 
+  // -------- Gmail options --------
+  function setGmailOptsStatus(text, ok = false) {
+    gmailStatus.textContent = text || "";
+    gmailStatus.style.color = ok ? "var(--success)" : "var(--danger)";
+  }
+
+  function renderGmailState({ connected, mode, batch_size, last_scan_at }) {
+    if (connected) {
+      gmailPill.textContent = "Connected";
+      gmailPill.className = "mg-pill mg-pill--online";
+      gmailConnectBtn.hidden = true;
+      gmailDisconnectBtn.hidden = false;
+      gmailScanBtn.disabled = false;
+    } else {
+      gmailPill.textContent = "Not connected";
+      gmailPill.className = "mg-pill mg-pill--offline";
+      gmailConnectBtn.hidden = false;
+      gmailDisconnectBtn.hidden = true;
+      gmailScanBtn.disabled = true;
+    }
+    for (const r of gmailModeRadios) r.checked = (r.value === (mode || "passive"));
+    gmailBatchInput.value = batch_size || 25;
+    gmailLast.textContent = last_scan_at
+      ? `Last scan: ${new Date(last_scan_at).toLocaleString()}`
+      : "No scans yet.";
+  }
+
+  async function refreshGmail() {
+    try {
+      const r = await chrome.runtime.sendMessage({ type: "get-status" });
+      if (!r || !r.ok) throw new Error(r?.error || "status failed");
+      renderGmailState(r.gmail || {});
+    } catch (err) {
+      gmailPill.textContent = "Error";
+      gmailPill.className = "mg-pill mg-pill--offline";
+      setGmailOptsStatus(err.message);
+    }
+  }
+
+  async function persistGmailConfig() {
+    const mode = document.querySelector('input[name="gmail-mode"]:checked')?.value || "passive";
+    const batch = Math.min(Math.max(Number(gmailBatchInput.value) || 25, 1), 100);
+    try {
+      await chrome.runtime.sendMessage({
+        type: "gmail_set_mode",
+        mode,
+        batch_size: batch,
+      });
+      setGmailOptsStatus(`Saved: mode=${mode}, batch=${batch}`, true);
+      await refreshGmail();
+    } catch (err) {
+      setGmailOptsStatus(err.message);
+    }
+  }
+
+  gmailConnectBtn.addEventListener("click", async () => {
+    setGmailOptsStatus("Connecting…");
+    try {
+      await chrome.runtime.sendMessage({ type: "gmail_connect" });
+      setGmailOptsStatus("Connected.", true);
+      await refreshGmail();
+    } catch (err) {
+      setGmailOptsStatus(err.message);
+    }
+  });
+
+  gmailDisconnectBtn.addEventListener("click", async () => {
+    setGmailOptsStatus("Disconnecting…");
+    try {
+      await chrome.runtime.sendMessage({ type: "gmail_disconnect" });
+      setGmailOptsStatus("Disconnected.", true);
+      await refreshGmail();
+    } catch (err) {
+      setGmailOptsStatus(err.message);
+    }
+  });
+
+  gmailScanBtn.addEventListener("click", async () => {
+    setGmailOptsStatus("Scanning…");
+    gmailScanBtn.disabled = true;
+    try {
+      const r = await chrome.runtime.sendMessage({ type: "gmail_scan_now" });
+      const count = (r.results || []).length;
+      setGmailOptsStatus(`Scanned ${count} message${count === 1 ? "" : "s"}.`, true);
+      await refreshGmail();
+    } catch (err) {
+      setGmailOptsStatus(err.message);
+    } finally {
+      gmailScanBtn.disabled = false;
+    }
+  });
+
+  for (const r of gmailModeRadios) r.addEventListener("change", persistGmailConfig);
+  gmailBatchInput.addEventListener("change", persistGmailConfig);
+
   // -------- Service status --------
   async function loadServiceStatus() {
     try {
@@ -293,6 +397,7 @@
 
   await refreshAuth();
   await refreshProfile();
+  await refreshGmail();
   await loadWhitelist();
   await loadBlacklist();
   await loadServiceStatus();
