@@ -29,9 +29,9 @@ def upgrade() -> None:
         sa.Column("full_name", sa.String(150), nullable=True),
         sa.Column(
             "role",
-            sa.Enum("user", "admin", name="user_role", length=20),
+            sa.Enum("USER", "ADMIN", name="user_role", length=20),
             nullable=False,
-            server_default="user",
+            server_default="USER",
         ),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
         sa.Column("is_verified", sa.Boolean, nullable=False, server_default=sa.false()),

@@ -125,6 +125,7 @@ services:
       context: ..
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
+    command: ["nginx", "-g", "daemon off;"]
     environment:
       MAILGUARD_API_BASE_URL: ${MAILGUARD_API_BASE_URL:-http://localhost:8000/api/v1}
     depends_on:

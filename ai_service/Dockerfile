@@ -20,12 +20,12 @@ COPY . /app/ai_service
 # Models + datasets directories (mounted as volumes in production)
 RUN mkdir -p /app/ai_service/models/artifacts /app/ai_service/datasets
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/ai_service
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8001
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8001/health || exit 1
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "ai_service.app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "ai_service.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
