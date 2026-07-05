@@ -20,7 +20,7 @@ x-common-env: &common-env
   APP_ENV: development
   LOG_LEVEL: DEBUG
   APP_DEBUG: "true"
-  CORS_ORIGINS: "chrome-extension://*,http://localhost:5500,http://localhost:3000,http://localhost:8080"
+  CORS_ORIGINS: "chrome-extension://*,http://localhost:5500,http://localhost:3000,http://localhost:8080,http://localhost:8000,http://localhost:8003,http://127.0.0.1:8000,http://127.0.0.1:8003"
   BACKEND_URL: http://localhost:8000
 
 services:
