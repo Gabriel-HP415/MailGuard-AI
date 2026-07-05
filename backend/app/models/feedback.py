@@ -40,7 +40,12 @@ class Feedback(Base, TimestampMixin):
     )
     is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False, index=True)
     correct_class: Mapped[Optional[EmailClass]] = mapped_column(
-        SAEnum(EmailClass, name="correct_class", length=20),
+        SAEnum(
+            EmailClass,
+            name="correct_class",
+            length=20,
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=True,
     )
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

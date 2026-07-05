@@ -28,7 +28,12 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     role: Mapped[UserRole] = mapped_column(
-        SAEnum(UserRole, name="user_role", length=20),
+        SAEnum(
+            UserRole,
+            name="user_role",
+            length=20,
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
         default=UserRole.USER,
     )

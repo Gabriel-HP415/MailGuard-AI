@@ -51,7 +51,12 @@ class Prediction(Base, TimestampMixin):
         index=True,
     )
     predicted_class: Mapped[EmailClass] = mapped_column(
-        SAEnum(EmailClass, name="email_class", length=20),
+        SAEnum(
+            EmailClass,
+            name="email_class",
+            length=20,
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
         index=True,
     )
@@ -59,7 +64,12 @@ class Prediction(Base, TimestampMixin):
     confidence: Mapped[float] = mapped_column(DECIMAL(5, 4), nullable=False)
     risk_score: Mapped[float] = mapped_column(DECIMAL(5, 2), nullable=False)
     threat_level: Mapped[ThreatLevel] = mapped_column(
-        SAEnum(ThreatLevel, name="threat_level", length=20),
+        SAEnum(
+            ThreatLevel,
+            name="threat_level",
+            length=20,
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
         default=ThreatLevel.LOW,
     )

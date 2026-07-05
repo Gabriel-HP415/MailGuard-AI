@@ -34,7 +34,24 @@ async def recent_predictions(
 ) -> dict[str, Any]:
     """Return the most recent predictions for the dashboard."""
     preds = prediction_service.list_user_predictions(db, current_user, limit=limit)
-    return {"results": preds, "total": len(preds)}
+    items = []
+    for p in preds:
+        items.append({
+            "id": p.id,
+            "email_id": p.email_id,
+            "predicted_class": p.predicted_class.value
+                if hasattr(p.predicted_class, "value") else str(p.predicted_class),
+            "class_index": p.class_index,
+            "confidence": float(p.confidence),
+            "risk_score": float(p.risk_score),
+            "threat_level": p.threat_level.value
+                if hasattr(p.threat_level, "value") else str(p.threat_level),
+            "probabilities": p.probabilities,
+            "explanation": p.explanation,
+            "suspicious_urls": p.suspicious_urls,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        })
+    return {"results": items, "total": len(items)}
 
 
 @router.get("/ai/health")
