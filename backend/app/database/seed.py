@@ -16,9 +16,7 @@ from app.core.constants import ModelAlgorithm, UserRole
 from app.core.security import hash_password
 from app.database.connection import SessionLocal
 from app.models.feedback import Feedback
-from app.models.list_entry import ListEntry
 from app.models.model_version import ModelVersion
-from app.models.prediction import Prediction
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
