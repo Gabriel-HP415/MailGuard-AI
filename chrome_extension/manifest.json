@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
   "permissions": [
@@ -33,8 +33,7 @@
     "http://127.0.0.1:8003/*"
   ],
   "background": {
-    "service_worker": "background/service-worker.js",
-    "type": "module"
+    "service_worker": "background/service-worker.classic.js"
   },
   "oauth2": {
     "client_id": "1022955855604-u0c7pfuaa7el5qukmhiq5778rsaug5tj.apps.googleusercontent.com",
