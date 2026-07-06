@@ -663,3 +663,35 @@ input[type="text"] {
   font-style: italic;
   margin: 4px 0;
 }
+
+.mg-section__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 12px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.mg-section__hint {
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.mg-list__item__risk {
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mg-list__item__risk-unit {
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 1px;
+}

@@ -59,6 +59,8 @@ const STRINGS = {
 
     "dashboard.greeting": "Hello, {name}",
     "dashboard.wave": "👋",
+    "dashboard.recent_title": "📊 Recent predictions",
+    "dashboard.recent_hint": "(from server)",
     "dashboard.role_prefix": "Signed in as",
 
     "stat.predictions": "Predictions",
@@ -80,6 +82,8 @@ const STRINGS = {
     "gmail.scan_status_ok": "✅ Scanned {count} message{s}.",
     "gmail.last_scan_prefix": "Last scan: ",
     "gmail.connect_to_scan": "Connect Gmail to scan your inbox.",
+    "gmail.scan_results_title": "📬 Gmail inbox scan results",
+    "gmail.scan_results_hint": "(just scanned)",
     "gmail.mode_passive": "Mode: passive · batch {size}",
     "gmail.mode_active": "Mode: active (auto-scan every 5 min) · batch {size}",
     "gmail.mode_set": "Mode set to {mode}.",
@@ -150,6 +154,8 @@ const STRINGS = {
 
     "dashboard.greeting": "Xin chào, {name}",
     "dashboard.wave": "👋",
+    "dashboard.recent_title": "📊 Lịch sử dự đoán gần đây",
+    "dashboard.recent_hint": "(từ máy chủ)",
     "dashboard.role_prefix": "Vai trò",
 
     "stat.predictions": "Lượt quét",
@@ -171,6 +177,8 @@ const STRINGS = {
     "gmail.scan_status_ok": "✅ Đã quét {count} thư.",
     "gmail.last_scan_prefix": "Lần quét cuối: ",
     "gmail.connect_to_scan": "Kết nối Gmail để quét hộp thư.",
+    "gmail.scan_results_title": "📬 Kết quả quét hộp thư Gmail",
+    "gmail.scan_results_hint": "(vừa quét)",
     "gmail.mode_passive": "Chế độ: thủ công · mỗi lần {size} thư",
     "gmail.mode_active": "Chế độ: tự động (quét mỗi 5 phút) · mỗi lần {size} thư",
     "gmail.mode_set": "Đã đặt chế độ: {mode}.",

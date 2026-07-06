@@ -209,8 +209,8 @@ import {
         .map((p) => `
           <li class="mg-list__item">
             <div class="mg-list__item__title">
-              <span>${escapeHtml(String(p.predicted_class || "").toUpperCase())}</span>
-              <span>${escapeHtml(t("item.risk"))} ${Math.round(p.risk_score || 0)}</span>
+              <span class="mg-list__item__sub-text">${escapeHtml(String(p.predicted_class || "").toUpperCase())}</span>
+              <span class="mg-list__item__risk">${escapeHtml(t("item.risk"))} ${Math.round(p.risk_score || 0)}<span class="mg-list__item__risk-unit">/100</span></span>
             </div>
             <div class="mg-list__item__sub">
               <span class="mg-list__item__pill">${escapeHtml(p.threat_level || "")}</span>
@@ -327,7 +327,7 @@ import {
           <li class="mg-list__item ${isHigh ? "mg-list__item--danger" : ""}">
             <div class="mg-list__item__title">
               <span class="mg-list__item__sub-text">${escapeHtml(r.subject || t("item.no_subject"))}</span>
-              <span>${escapeHtml(t("item.risk"))} ${score}</span>
+              <span class="mg-list__item__risk">${escapeHtml(t("item.risk"))} ${score}<span class="mg-list__item__risk-unit">/100</span></span>
             </div>
             <div class="mg-list__item__sub">
               <span class="mg-list__item__pill mg-list__item__pill--${escapeHtml(klass)}">${escapeHtml(p.predicted_class || "")}</span>
