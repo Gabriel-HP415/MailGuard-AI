@@ -9,6 +9,11 @@ version: "3.9"
 #   docker compose exec backend alembic upgrade head
 #   docker compose exec backend python -m app.database.seed
 #
+# The admin account is created by seed: admin@mailguard.ai / ChangeMe123!
+#
+# Optional: copy .env.example to .env and customize settings.
+# A default JWT_SECRET_KEY is provided for local testing (change in production!).
+#
 # Stop everything (keeps data volumes):
 #   docker compose down
 #
@@ -91,7 +96,7 @@ services:
       # it overrides the MySQL host/port/user/password fields above.
       # Leave unset for local compose → uses the MySQL service.
       DATABASE_URL: ${DATABASE_URL:-}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_secret_change_in_production_minimum_32_chars}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       AI_SERVICE_URL: http://ai_service:8001
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
@@ -99,7 +104,7 @@ services:
       # AI_PROVIDER controls how the backend classifies emails:
       #   gemini — uses Google Gemini directly (requires GEMINI_API_KEY)
       #   http   — calls the ai_service container (default; works offline)
-      AI_PROVIDER: ${AI_PROVIDER:-http}
+      AI_PROVIDER: ${AI_PROVIDER:-stub}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
       FIREBASE_ENABLED: ${FIREBASE_ENABLED:-true}
@@ -112,6 +117,12 @@ services:
         condition: service_healthy
       ai_service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
@@ -129,7 +140,8 @@ services:
     environment:
       MAILGUARD_API_BASE_URL: ${MAILGUARD_API_BASE_URL:-http://localhost:8000/api/v1}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-8080}:80"
     networks:

@@ -1,8 +1,61 @@
 /**
  * UI helpers used across pages: navbar, auth guard, toasts, formatting.
+ *
+ * The navbar template lives in `partials/navbar.html` and is fetched on
+ * demand by `mountNavbarAsync()` so each page can stay self-contained —
+ * no `<script>` tag injection in HTML. The synchronous `mountNavbar()` is
+ * kept as a backwards-compatible entry point that injects an empty
+ * template in case the page embeds one inline (used during tests).
  */
 
 const UI = {
+  _navbarTemplatePromise: null,
+
+  /**
+   * Ensure the navbar template element exists in the DOM by fetching the
+   * shared partial. Subsequent calls return the same Promise so we don't
+   * re-download the template on every navigation.
+   */
+  ensureNavbarTemplate() {
+    if (document.getElementById("navbar-template")) {
+      return Promise.resolve();
+    }
+    if (UI._navbarTemplatePromise) return UI._navbarTemplatePromise;
+    UI._navbarTemplatePromise = fetch("/partials/navbar.html")
+      .then((r) => {
+        if (!r.ok) throw new Error(`navbar.html ${r.status}`);
+        return r.text();
+      })
+      .then((html) => {
+        const wrap = document.createElement("div");
+        wrap.innerHTML = html;
+        const tpl = wrap.querySelector("#navbar-template");
+        if (!tpl) throw new Error("navbar.html missing #navbar-template");
+        document.body.prepend(tpl);
+      })
+      .catch((err) => {
+        // Reset the cached promise so the next call can retry.
+        UI._navbarTemplatePromise = null;
+        console.warn("[MailGuard] failed to load navbar partial:", err);
+        throw err;
+      });
+    return UI._navbarTemplatePromise;
+  },
+
+  /**
+   * Async version of `mountNavbar`. Awaits the navbar template fetch
+   * before rendering. This is what each page should call.
+   */
+  async mountNavbarAsync(opts) {
+    try {
+      await UI.ensureNavbarTemplate();
+    } catch (err) {
+      // Fall back to synchronous path; if no inline template, navbar
+      // simply won't render, but auth guard still runs.
+    }
+    UI.mountNavbar(opts);
+  },
+
   /**
    * Render a Bootstrap navbar and return whether the user is allowed
    * to see the requested page (based on pageAuth meta tag).

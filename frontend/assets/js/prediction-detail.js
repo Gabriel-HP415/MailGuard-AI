@@ -1,5 +1,5 @@
 (async function () {
-  UI.mountNavbar({ active: "predictions" });
+  await UI.mountNavbarAsync({ active: "predictions" });
 
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");

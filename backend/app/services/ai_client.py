@@ -30,7 +30,146 @@ _DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 _SUSPICIOUS_TOKENS = (
     "verify", "urgent", "click here", "password", "suspended", "limit",
     "won", "winner", "prize", "bit.ly", "tinyurl", ".tk", ".xyz",
+    # Account action keywords
+    "unauthorized", "sign-in", "suspicious", "compromised", "locked",
+    "verify your", "confirm your", "update your", "validate your",
+    "account update", "security alert", "unusual activity", "unrecognized",
+    "immediately", "within 24", "within 12", "within 48",
+    # Financial / payment
+    "payment", "credit card", "debit card", "bank account", "ssn",
+    "social security", "tax id", "routing number",
+    # Threat language
+    "permanent", "terminated", "close your account", "will be closed",
+    "suspended permanently", "limited access", "restricted",
+    "action required", "confirm identity", "identity verification",
+    # Claim / prize
+    "you have won", "you've won", "claim your", "claim now",
+    # Fake urgency
+    "expires today", "today only", "last chance", "limited time",
+    "offer expires", "act now", "do not ignore",
+    # Credential harvesting
+    "enter your", "input your", "provide your", "update now",
+    "login attempt", "new device", "unusual sign-in",
 )
+
+# Brand names commonly impersonated — if seen in a suspicious URL subdomain
+_BRAND_KEYWORDS = {
+    "paypal": "paypal",
+    "apple": "apple", "appleid": "apple",
+    "google": "google", "googledrive": "google",
+    "microsoft": "microsoft", "outlook": "microsoft",
+    "amazon": "amazon", "aws": "amazon",
+    "facebook": "facebook", "meta": "facebook",
+    "instagram": "instagram",
+    "netflix": "netflix",
+    "ebay": "ebay",
+    "bank": "bank", "chase": "chase", "wellsfargo": "wells fargo",
+    "citi": "citi", "bankofamerica": "bank of america",
+    "dropbox": "dropbox",
+    "linkedin": "linkedin",
+    "steam": "steam",
+    "spotify": "spotify",
+    "coinbase": "coinbase", "binance": "binance",
+}
+
+
+def _is_typosquatting_url(url: str, sender_domain: str = "") -> bool:
+    """Return True if `url` looks like a phishing/toposquatting site.
+
+    Strategy:
+    - If `sender_domain` is provided, flag the URL if it differs from the
+      legitimate sender domain (e.g. sender=paypal.com, url=paypal-secure.com).
+    - Otherwise, flag URLs whose registered domain contains a brand keyword
+      but is not the genuine brand domain.
+
+    E.g.:
+      sender=paypal.com, url=paypal-secure.com/login  -> True  (sender mismatch)
+      url=secure-update-paypal-verify.com/login        -> True  (brand in domain, not real TLD)
+      url=paypal.com/confirm-identity                   -> False (legitimate)
+      url=apple.com-verify-id.net/secure-login         -> True  (apple in domain, not .com/.apple)
+    """
+    import re
+    if not url:
+        return False
+    url_lower = url.lower()
+
+    # Strategy 1: Sender domain mismatch — strongest signal.
+    # If sender claims to be @paypal.com but URL goes elsewhere, it's phishing.
+    if sender_domain:
+        sender_clean = sender_domain.strip().lower()
+        url_match = re.match(r"https?://([^/:]+)", url_lower)
+        if url_match:
+            url_domain = url_match.group(1)
+            # Extract the registered domain (last 2 parts typically)
+            # For "paypal-secure.com" -> "paypal-secure.com"
+            # For "secure.paypal.com" -> "paypal.com"
+            url_parts = url_domain.split(".")
+            if len(url_parts) >= 2:
+                # Get the last two parts as the "registered domain"
+                url_registered = ".".join(url_parts[-2:])
+                # If sender domain is a known brand TLD and URL doesn't match, flag
+                if url_registered != sender_clean and sender_clean in {
+                        "paypal.com", "apple.com", "google.com", "microsoft.com",
+                        "amazon.com", "facebook.com", "instagram.com", "netflix.com",
+                        "ebay.com", "dropbox.com", "linkedin.com", "steamcommunity.com",
+                        "spotify.com", "coinbase.com", "binance.com",
+                        "chase.com", "wellsfargo.com", "bankofamerica.com", "citi.com",
+                        "outlook.com", "live.com", "appleid.apple.com",
+                }:
+                    return True
+
+    # Strategy 2: Domain contains brand keyword but is NOT a known real brand domain.
+    # Build the full domain (all parts) to check.
+    match = re.match(r"https?://([^/:]+)", url_lower)
+    if not match:
+        return False
+    full_domain = match.group(1)  # e.g. "secure-update-paypal-verify.com"
+
+    # Known legitimate brand domains (registered domain = brand + safe TLD)
+    safe_brand_registered = {
+        # brand keyword -> set of legitimate registered domains
+        "paypal":       {"paypal.com"},
+        "apple":        {"apple.com", "appleid.apple.com"},
+        "google":       {"google.com", "goo.gl"},
+        "microsoft":    {"microsoft.com"},
+        "outlook":      {"outlook.com", "live.com"},
+        "amazon":       {"amazon.com", "amazon.co.uk", "amazon.de", "aws.amazon.com"},
+        "facebook":     {"facebook.com", "fb.com"},
+        "instagram":    {"instagram.com"},
+        "netflix":      {"netflix.com"},
+        "ebay":         {"ebay.com"},
+        "dropbox":      {"dropbox.com"},
+        "linkedin":     {"linkedin.com"},
+        "steam":        {"steamcommunity.com", "steampowered.com"},
+        "spotify":      {"spotify.com"},
+        "coinbase":     {"coinbase.com"},
+        "binance":      {"binance.com"},
+        "chase":        {"chase.com"},
+        "wellsfargo":   {"wellsfargo.com"},
+        "bankofamerica":{"bankofamerica.com"},
+        "citi":         {"citi.com"},
+    }
+
+    # Strip common path/query from domain for checking
+    # (domain is already extracted from URL regex above)
+
+    # If the full domain is in our safe list, it's legitimate
+    if full_domain in {d for ds in safe_brand_registered.values() for d in ds}:
+        return False
+
+    # Check if the registered domain (last 2 parts) contains a brand keyword
+    domain_parts = full_domain.split(".")
+    registered = ".".join(domain_parts[-2:])  # last 2 parts
+
+    for kw, legitimate_domains in safe_brand_registered.items():
+        if kw in registered:
+            # It's a brand keyword in the domain — is it the REAL domain?
+            if registered not in legitimate_domains:
+                return True  # typosquatting
+            # It's the real domain (e.g. paypal.com) — legitimate
+            return False
+
+    return False
 
 
 def _stub_prediction(payload: PredictionRequest) -> dict[str, Any]:
@@ -42,17 +181,109 @@ def _stub_prediction(payload: PredictionRequest) -> dict[str, Any]:
     """
     import hashlib
     import random
+    import re
+    import urllib.parse
 
     sender = (payload.email.sender or "").lower()
     subject = (payload.email.subject or "").lower()
     body = (payload.email.body_text or payload.email.body_html or "").lower()
+    links: list[str] = payload.email.links or []
+
+    # --- Extract sender domain EARLY (needed for URL checks) ---
+    try:
+        sender_domain = sender.split("@")[1] if "@" in sender else ""
+        sender_domain = sender_domain.split(">")[0].strip()
+    except Exception:
+        sender_domain = ""
 
     text = " ".join((sender, subject, body))
     hits = [tok for tok in _SUSPICIOUS_TOKENS if tok in text]
+
+    # --- Detect typosquatting URLs ---
+    suspicious_urls = []
+    for raw_url in links:
+        url_lower = raw_url.lower()
+        if _is_typosquatting_url(url_lower, sender_domain):
+            suspicious_urls.append({"url": raw_url, "score": 0.95, "reason": "typosquatting"})
+        elif any(s in url_lower for s in ["bit.ly", "tinyurl", ".tk", ".xyz", "goo.gl"]):
+            suspicious_urls.append({"url": raw_url, "score": 0.85, "reason": "suspicious_shortener"})
+        elif not url_lower.startswith("https://"):
+            suspicious_urls.append({"url": raw_url, "score": 0.6, "reason": "non_https"})
+
+    # If no links provided, scan body for URL-like strings
+    if not suspicious_urls:
+        url_pattern = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
+        found_urls = url_pattern.findall(body)
+        for raw_url in found_urls:
+            if _is_typosquatting_url(raw_url, sender_domain):
+                suspicious_urls.append({"url": raw_url, "score": 0.95, "reason": "typosquatting_in_body"})
+            elif any(s in raw_url.lower() for s in ["bit.ly", "tinyurl", ".tk", ".xyz"]):
+                suspicious_urls.append({"url": raw_url, "score": 0.85, "reason": "suspicious_shortener"})
+
+    # --- Sender domain check ---
+    # Check if sender domain impersonates a known brand
+    safe_brand_domains_for_sender = {
+        "paypal.com", "apple.com", "appleid.apple.com",
+        "google.com", "microsoft.com", "amazon.com",
+        "facebook.com", "instagram.com", "netflix.com",
+        "ebay.com", "dropbox.com", "linkedin.com",
+        "steamcommunity.com", "spotify.com",
+        "coinbase.com", "binance.com",
+        "chase.com", "wellsfargo.com", "bankofamerica.com", "citi.com",
+        "outlook.com", "live.com",
+    }
+
+    safe_domains = {
+        "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+        "company.com", "corp.com", "enterprise.com",
+        "mailguard.ai", "paypal.com", "apple.com", "amazon.com",
+        "microsoft.com", "google.com", "facebook.com", "netflix.com",
+    }
+    sender_is_safe = sender_domain in safe_domains
+
+    # --- Compute risk score ---
+    # Start with token hits
     risk = min(100.0, 8.0 * len(hits) + 5.0)
+
+    # URL factors
+    risk += 30 * len(suspicious_urls) if suspicious_urls else 0
+
+    # Sender impersonation: sender claims brand domain but isn't legitimate
+    # e.g. sender=support@paypal-secure.com but sender_domain is not in safe brand list
+    sender_is_suspicious = bool(
+        sender_domain
+        and sender_domain not in safe_brand_domains_for_sender
+        and any(brand in sender_domain for brand in ["paypal", "apple", "google",
+                  "microsoft", "amazon", "facebook", "instagram", "netflix",
+                  "ebay", "dropbox", "steam", "spotify", "coinbase", "binance"])
+    )
+    if sender_is_suspicious:
+        risk += 25
+        hits.append(f"sender_domain:{sender_domain}")
+
+    # Brand safety bonus: if sender is a known legitimate brand domain
+    # AND no typosquatting URLs were found, the email is likely a real
+    # security notification (e.g. PayPal real security alerts). Reduce risk.
+    if sender_domain in safe_brand_domains_for_sender and not suspicious_urls:
+        # Real brand emails from legitimate senders are safe by default.
+        # Only re-activate a small amount of risk for multiple tokens.
+        risk = min(25, 4.0 * len(hits))  # At most 25 risk for word-heavy real alerts
+
+    # Brand impersonation in subject line (without matching sender)
+    brand_keywords = ["paypal", "apple", "google", "microsoft", "amazon", "facebook",
+                      "instagram", "netflix", "ebay", "dropbox", "steam", "spotify"]
+    subject_brands = [b for b in brand_keywords if b in subject]
+    if subject_brands and not sender_is_safe:
+        risk += 20
+        hits.append(f"subject_brand:{subject_brands[0]}")
+
+    # Cap at 100
+    risk = min(100.0, risk)
+
+    # is_phish drives the class prediction
     is_phish = risk >= 50
 
-    pred_class = "phishing" if is_phish else "legitimate"
+    pred_class = "scam" if is_phish else "normal"
     confidence = round(0.55 + min(0.4, risk / 250.0), 3)
 
     # Deterministic seed so the same email -> same response
@@ -62,7 +293,7 @@ def _stub_prediction(payload: PredictionRequest) -> dict[str, Any]:
     p_normal = round(rng.uniform(0.05, 0.4), 3)
     p_notif = round(rng.uniform(0.02, 0.15), 3)
     p_spam = round(rng.uniform(0.05, 0.3), 3)
-    p_scam_base = 0.2 if is_phish else 0.02
+    p_scam_base = 0.25 if is_phish else 0.02
     p_scam = round(min(0.95, p_scam_base + risk / 200.0), 3)
 
     total = p_normal + p_notif + p_spam + p_scam
@@ -92,14 +323,12 @@ def _stub_prediction(payload: PredictionRequest) -> dict[str, Any]:
         "risk_score": round(risk, 2),
         "threat_level": threat,
         "probabilities": probs_dict,
-        "suspicious_urls": [
-            {"url": u, "score": 0.9} for u in (payload.email.links or []) if u
-        ],
+        "suspicious_urls": suspicious_urls,
         "explanation": (
             {"matched_signals": hits, "note": "stub classifier"}
             if hits else None
         ),
-        "model_version": "stub-v1",
+        "model_version": "stub-v2",
     }
 
 

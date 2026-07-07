@@ -1,5 +1,5 @@
 (async function () {
-  UI.mountNavbar({ active: "dashboard" });
+  await UI.mountNavbarAsync({ active: "dashboard" });
 
   const statTotal   = document.getElementById("stat-total");
   const statHigh    = document.getElementById("stat-high");

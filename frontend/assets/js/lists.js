@@ -1,5 +1,5 @@
-(function () {
-  UI.mountNavbar({ active: "lists" });
+(async function () {
+  await UI.mountNavbarAsync({ active: "lists" });
 
   const wlList = document.getElementById("wl-list");
   const blList = document.getElementById("bl-list");

@@ -59,6 +59,8 @@ import {
   const gmailScanList = document.getElementById("gmail-scan-list");
   const gmailModeToggle = document.getElementById("gmail-mode-toggle");
   const gmailNotifyToggle = document.getElementById("gmail-notify-toggle");
+  const gmailNotifyThresholdInput = document.getElementById("gmail-notify-threshold");
+  const gmailRiskCountBadge = document.getElementById("gmail-risk-count-badge");
   const gmailStatus = document.getElementById("gmail-status");
 
   // ---------- Language toggle ----------
@@ -258,7 +260,7 @@ import {
       : "mg-popup__status";
   }
 
-  function renderGmailConnection(connected, mode, batchSize, lastScanAt, notifyEnabled) {
+  function renderGmailConnection(connected, mode, batchSize, lastScanAt, notifyEnabled, notifyThreshold, riskCount) {
     if (connected) {
       gmailConnectionPill.textContent = t("gmail.connected");
       gmailConnectionPill.className = "mg-pill mg-pill--online";
@@ -278,6 +280,11 @@ import {
     }
     gmailModeToggle.checked = mode === "active";
     gmailNotifyToggle.checked = Boolean(notifyEnabled);
+    if (gmailNotifyThresholdInput) {
+      gmailNotifyThresholdInput.value = notifyThreshold || 60;
+      const label = document.getElementById("gmail-notify-threshold-value");
+      if (label) label.textContent = String(notifyThreshold || 60);
+    }
     gmailModeLabel.textContent = connected
       ? (mode === "active"
           ? t("gmail.mode_active", { size: batchSize })
@@ -288,6 +295,14 @@ import {
       gmailLastScan.textContent = `${t("gmail.last_scan_prefix")}${rel ? rel + " · " : ""}${new Date(lastScanAt).toLocaleString()}`;
     } else {
       gmailLastScan.textContent = t("empty.scan");
+    }
+    if (gmailRiskCountBadge) {
+      if (connected && riskCount > 0) {
+        gmailRiskCountBadge.textContent = String(riskCount);
+        gmailRiskCountBadge.hidden = false;
+      } else {
+        gmailRiskCountBadge.hidden = true;
+      }
     }
   }
 
@@ -424,10 +439,18 @@ import {
         g.mode || "passive",
         g.batch_size || 25,
         g.last_scan_at,
-        g.notify_enabled
+        g.notify_enabled,
+        g.notify_threshold || 60,
+        g.risk_count || 0
       );
       const res = await chrome.runtime.sendMessage({ type: "gmail_get_results" });
-      if (res && res.ok) renderGmailResults(res.results || []);
+      if (res && res.ok) {
+        renderGmailResults(res.results || []);
+        // Reset the badge counter once the user has seen the scan list.
+        if ((g.risk_count || 0) > 0) {
+          chrome.runtime.sendMessage({ type: "risk-count-clear" });
+        }
+      }
     } catch (err) {
       console.warn("[MailGuard] loadGmailStatus failed", err);
     }
@@ -573,15 +596,36 @@ import {
 
   gmailNotifyToggle.addEventListener("change", async () => {
     const enabled = gmailNotifyToggle.checked;
+    const threshold = Number(gmailNotifyThresholdInput?.value) || 60;
     setGmailStatus(null);
     try {
-      await sendMsg({ type: "gmail_set_notify", enabled });
+      await sendMsg({
+        type: "gmail_set_notify",
+        enabled,
+        threshold,
+      });
       setGmailStatus(
-        enabled ? `✅ ${t("gmail.notif_enabled_msg")}` : "",
+        enabled ? `✅ ${t("gmail.notif_enabled_msg")} (≥${threshold}/100)` : "",
         "ok"
       );
     } catch (err) {
       gmailNotifyToggle.checked = !gmailNotifyToggle.checked;
+      setGmailStatus(`❌ ${err.message}`, "error");
+    }
+  });
+
+  gmailNotifyThresholdInput?.addEventListener("change", async () => {
+    const threshold = Math.min(Math.max(Number(gmailNotifyThresholdInput.value) || 60, 1), 100);
+    gmailNotifyThresholdInput.value = threshold;
+    const label = document.getElementById("gmail-notify-threshold-value");
+    if (label) label.textContent = String(threshold);
+    try {
+      await sendMsg({
+        type: "gmail_set_notify",
+        enabled: gmailNotifyToggle.checked,
+        threshold,
+      });
+    } catch (err) {
       setGmailStatus(`❌ ${err.message}`, "error");
     }
   });

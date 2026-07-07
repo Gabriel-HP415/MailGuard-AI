@@ -1,5 +1,5 @@
-(function () {
-  UI.mountNavbar({ active: "predictions" });
+(async function () {
+  await UI.mountNavbarAsync({ active: "predictions" });
 
   const tbody = document.getElementById("table-body");
   const form  = document.getElementById("filter-form");

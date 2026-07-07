@@ -91,6 +91,7 @@ const STRINGS = {
     "gmail.active_toggle_notify": "Notify on dangerous emails",
     "gmail.notif_block": "You can disable notifications in Chrome settings.",
     "gmail.notif_enabled_msg": "✅ You'll be notified when high-risk emails arrive.",
+    "gmail.notify_threshold_label": "Notify threshold",
 
     "item.risk": "Risk",
     "item.error_pill": "error",
@@ -186,6 +187,7 @@ const STRINGS = {
     "gmail.active_toggle_notify": "Thông báo khi phát hiện email nguy hiểm",
     "gmail.notif_block": "Bạn có thể tắt thông báo trong cài đặt Chrome.",
     "gmail.notif_enabled_msg": "✅ Sẽ thông báo khi phát hiện email rủi ro cao.",
+    "gmail.notify_threshold_label": "Ngưỡng cảnh báo",
 
     "item.risk": "Rủi ro",
     "item.error_pill": "lỗi",

@@ -22,6 +22,6 @@ behind a single domain with HTTPS via certbot.
 
 | Domain | Forwards to |
 |--------|-------------|
-| `/`     | frontend (port 80 of `mailguard_frontend`) |
-| `/api/v1/*` | backend (port 8000 of `mailguard_backend`) |
-| `/ai/*`  | ai_service (port 8000 of `mailguard_ai_service`) |
+| `/`     | frontend (port 80 of `frontend`) |
+| `/api/v1/*` | backend (port 8000 of `backend`) |
+| `/ai/*`  | ai_service (port 8000 of `ai_service`) |

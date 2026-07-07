@@ -36,6 +36,9 @@
   const gmailDisconnectBtn = document.getElementById("gmail-options-disconnect");
   const gmailScanBtn = document.getElementById("gmail-options-scan");
   const gmailBatchInput = document.getElementById("gmail-options-batch");
+  const gmailThresholdInput = document.getElementById("gmail-options-threshold");
+  const gmailThresholdValue = document.getElementById("gmail-options-threshold-value");
+  const gmailNotifyEnabledInput = document.getElementById("gmail-options-notify");
   const gmailStatus = document.getElementById("gmail-options-status");
   const gmailModeRadios = document.querySelectorAll('input[name="gmail-mode"]');
 
@@ -286,7 +289,7 @@
     gmailStatus.style.color = ok ? "var(--success)" : "var(--danger)";
   }
 
-  function renderGmailState({ connected, mode, batch_size, last_scan_at }) {
+  function renderGmailState({ connected, mode, batch_size, last_scan_at, notify_enabled, notify_threshold }) {
     if (connected) {
       gmailPill.textContent = "Connected";
       gmailPill.className = "mg-pill mg-pill--online";
@@ -302,6 +305,13 @@
     }
     for (const r of gmailModeRadios) r.checked = (r.value === (mode || "passive"));
     gmailBatchInput.value = batch_size || 25;
+    if (gmailNotifyEnabledInput) gmailNotifyEnabledInput.checked = Boolean(notify_enabled);
+    if (gmailThresholdInput) {
+      gmailThresholdInput.value = notify_threshold || 60;
+    }
+    if (gmailThresholdValue) {
+      gmailThresholdValue.textContent = String(notify_threshold || 60);
+    }
     gmailLast.textContent = last_scan_at
       ? `Last scan: ${new Date(last_scan_at).toLocaleString()}`
       : "No scans yet.";
@@ -374,6 +384,43 @@
 
   for (const r of gmailModeRadios) r.addEventListener("change", persistGmailConfig);
   gmailBatchInput.addEventListener("change", persistGmailConfig);
+
+  // Threshold slider should update the live label and persist with the
+  // current enabled state.
+  gmailThresholdInput?.addEventListener("input", () => {
+    if (gmailThresholdValue) {
+      gmailThresholdValue.textContent = String(gmailThresholdInput.value);
+    }
+  });
+  gmailThresholdInput?.addEventListener("change", async () => {
+    try {
+      const threshold = Math.min(Math.max(Number(gmailThresholdInput.value) || 60, 1), 100);
+      const enabled = Boolean(gmailNotifyEnabledInput?.checked);
+      await chrome.runtime.sendMessage({
+        type: "gmail_set_notify",
+        enabled,
+        threshold,
+      });
+      setGmailOptsStatus(`Saved: notify=${enabled}, threshold=${threshold}`, true);
+    } catch (err) {
+      setGmailOptsStatus(err.message);
+    }
+  });
+  gmailNotifyEnabledInput?.addEventListener("change", async () => {
+    try {
+      const enabled = Boolean(gmailNotifyEnabledInput.checked);
+      const threshold = Math.min(Math.max(Number(gmailThresholdInput?.value) || 60, 1), 100);
+      await chrome.runtime.sendMessage({
+        type: "gmail_set_notify",
+        enabled,
+        threshold,
+      });
+      setGmailOptsStatus(`Saved: notify=${enabled}, threshold=${threshold}`, true);
+    } catch (err) {
+      gmailNotifyEnabledInput.checked = !gmailNotifyEnabledInput.checked;
+      setGmailOptsStatus(err.message);
+    }
+  });
 
   // -------- Service status --------
   async function loadServiceStatus() {

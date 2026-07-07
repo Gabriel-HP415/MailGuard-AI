@@ -1,5 +1,5 @@
-(function () {
-  UI.mountNavbar({ active: "admin" });
+(async function () {
+  await UI.mountNavbarAsync({ active: "admin" });
 
   const tbody = document.getElementById("mv-tbody");
   const form = document.getElementById("create-form");

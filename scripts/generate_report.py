@@ -1213,6 +1213,18 @@ def build_chapter6(doc: Document) -> None:
     )
     add_para(doc, "[Hình 5: native notification — hình minh hoạ]", italic=True)
 
+    add_para(
+        doc,
+        "Để tránh spam OS notification khi có nhiều email rủi ro liên tiếp, "
+        "extension áp dụng cooldown 5 phút giữa hai lần hiện thông báo — "
+        "xem `notifyDanger()` trong `background/service-worker.classic.js`. "
+        "Đồng thời extension cập nhật badge đếm trên icon extension "
+        "(\"3\" màu đỏ) — tăng khi phát hiện email rủi ro mới và tự reset "
+        "khi người dùng mở popup (xem `bumpRiskCount()` / `clearRiskCount()`). "
+        "Ngưỡng cảnh báo có thể chỉnh bằng thanh trượt trong popup hoặc trang "
+        "Settings → “Notify threshold” (mặc định 60/100).",
+    )
+
     add_heading_2(doc, "6.2. Giao diện Backend API (Swagger)")
     add_para(
         doc,

@@ -30,6 +30,8 @@ const STORAGE_KEYS = {
   GMAIL_SCAN_RESULTS: "mg_gmail_scan_results",
   GMAIL_NOTIFY: "mg_gmail_notify",       // boolean: show OS notification on risky email
   GMAIL_NOTIFY_THRESHOLD: "mg_gmail_notify_threshold", // risk_score (0-100) trigger
+  GMAIL_NOTIFY_COOLDOWN_UNTIL: "mg_gmail_notify_cooldown_until", // epoch ms: notify 1 lần / 5 phút
+  GMAIL_RISK_COUNT: "mg_gmail_risk_count", // số email nguy hiểm chưa xem
 };
 
 const DEFAULT_BASE_URL = "https://mailguard-ai-y0nh.onrender.com/api/v1";
@@ -346,12 +348,17 @@ function normalizeReceivedAt(raw) {
  * Falls back silently if the notifications API is unavailable or the user
  * hasn't enabled the toggle. Notification id encodes the threadId/messageId
  * so onClicked can build a Gmail deep-link.
+ *
+ * Throttle: at most one notification every 5 minutes, regardless of how
+ * many risky emails arrive in that window. Per-email details still go into
+ * the storage so the popup can show a count badge.
  */
 async function notifyDanger({ subject, from, riskScore, threatLevel, messageId, threadId }) {
   try {
     const cfg = await chrome.storage.local.get([
       STORAGE_KEYS.GMAIL_NOTIFY,
       STORAGE_KEYS.GMAIL_NOTIFY_THRESHOLD,
+      STORAGE_KEYS.GMAIL_NOTIFY_COOLDOWN_UNTIL,
     ]);
     if (!cfg[STORAGE_KEYS.GMAIL_NOTIFY]) return;
     const threshold = Number(cfg[STORAGE_KEYS.GMAIL_NOTIFY_THRESHOLD]) || 60;
@@ -365,6 +372,14 @@ async function notifyDanger({ subject, from, riskScore, threatLevel, messageId, 
     });
     // Trim old notification keys so storage doesn't grow forever.
     await pruneNotificationTargets();
+    // Throttle: skip the OS notification if the cooldown is still active, but
+    // still keep the badge count for the popup. User can see all risky emails
+    // by clicking the icon → "📬 Kết quả quét hộp thư Gmail".
+    const cooldownUntil = Number(cfg[STORAGE_KEYS.GMAIL_NOTIFY_COOLDOWN_UNTIL]) || 0;
+    if (Date.now() < cooldownUntil) {
+      await bumpRiskCount();
+      return;
+    }
     await chrome.notifications.create(id, {
       type: "basic",
       iconUrl: "icons/icon128.png",
@@ -374,8 +389,46 @@ async function notifyDanger({ subject, from, riskScore, threatLevel, messageId, 
       priority: 2,
       requireInteraction: true,
     });
+    // Set a 5-minute cooldown. After that the next risky email will notify again.
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.GMAIL_NOTIFY_COOLDOWN_UNTIL]: Date.now() + 5 * 60 * 1000,
+    });
+    await bumpRiskCount();
   } catch (err) {
     console.warn("[MailGuard] notifyDanger failed:", err.message);
+  }
+}
+
+/** Increment the "unread risky email" counter and reflect it on the toolbar
+ * icon as a small badge ("3") in red. The popup calls `risk-count-clear` to
+ * reset it after the user reviews the inbox scan results.
+ */
+async function bumpRiskCount() {
+  try {
+    const stored = await chrome.storage.local.get([STORAGE_KEYS.GMAIL_RISK_COUNT]);
+    const next = Number(stored[STORAGE_KEYS.GMAIL_RISK_COUNT] || 0) + 1;
+    await chrome.storage.local.set({ [STORAGE_KEYS.GMAIL_RISK_COUNT]: next });
+    if (chrome.action && chrome.action.setBadgeText) {
+      await chrome.action.setBadgeText({
+        text: next > 99 ? "99+" : String(next),
+      });
+      if (chrome.action.setBadgeBackgroundColor) {
+        await chrome.action.setBadgeBackgroundColor({ color: "#DC2626" });
+      }
+    }
+  } catch (err) {
+    console.warn("[MailGuard] bumpRiskCount failed:", err.message);
+  }
+}
+
+async function clearRiskCount() {
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEYS.GMAIL_RISK_COUNT]: 0 });
+    if (chrome.action && chrome.action.setBadgeText) {
+      await chrome.action.setBadgeText({ text: "" });
+    }
+  } catch (err) {
+    console.warn("[MailGuard] clearRiskCount failed:", err.message);
   }
 }
 
@@ -600,6 +653,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               last_scan_at: stored[STORAGE_KEYS.GMAIL_LAST_SCAN_AT] || null,
               notify_enabled: Boolean(stored[STORAGE_KEYS.GMAIL_NOTIFY]),
               notify_threshold: Number(stored[STORAGE_KEYS.GMAIL_NOTIFY_THRESHOLD]) || 60,
+              risk_count: Number(stored[STORAGE_KEYS.GMAIL_RISK_COUNT]) || 0,
             },
           });
           return;
@@ -683,6 +737,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             STORAGE_KEYS.GMAIL_SCAN_RESULTS,
             STORAGE_KEYS.GMAIL_MODE,
             STORAGE_KEYS.GMAIL_BATCH_SIZE,
+            STORAGE_KEYS.GMAIL_RISK_COUNT,
+            STORAGE_KEYS.GMAIL_NOTIFY_THRESHOLD,
           ]);
           sendResponse({
             ok: true,
@@ -690,7 +746,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             results: stored[STORAGE_KEYS.GMAIL_SCAN_RESULTS] || [],
             mode: stored[STORAGE_KEYS.GMAIL_MODE] || "passive",
             batch_size: Number(stored[STORAGE_KEYS.GMAIL_BATCH_SIZE]) || 25,
+            risk_count: Number(stored[STORAGE_KEYS.GMAIL_RISK_COUNT]) || 0,
+            notify_threshold: Number(stored[STORAGE_KEYS.GMAIL_NOTIFY_THRESHOLD]) || 60,
           });
+          return;
+        }
+
+        case "risk-count-clear": {
+          // Popup clears the badge counter after the user reviews the scan.
+          await clearRiskCount();
+          sendResponse({ ok: true });
           return;
         }
 
