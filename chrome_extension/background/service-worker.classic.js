@@ -34,7 +34,7 @@ const STORAGE_KEYS = {
   GMAIL_RISK_COUNT: "mg_gmail_risk_count", // số email nguy hiểm chưa xem
 };
 
-const DEFAULT_BASE_URL = "https://mailguard-ai-y0nh.onrender.com/api/v1";
+const DEFAULT_BASE_URL = "http://localhost:8003/api/v1";
 const DEFAULT_PORT_BASE_URL = "http://127.0.0.1:8003/api/v1";
 
 // Additional URLs we'll try, in order, when no base URL has been stored.
@@ -43,8 +43,6 @@ const DEFAULT_PORT_BASE_URL = "http://127.0.0.1:8003/api/v1";
 const CANDIDATE_LOCAL_URLS = [
   "http://127.0.0.1:8003/api/v1",
   "http://localhost:8003/api/v1",
-  "http://127.0.0.1:8000/api/v1",
-  "http://localhost:8000/api/v1",
 ];
 
 // Required Gmail OAuth scopes (must match manifest.oauth2.scopes).
@@ -584,6 +582,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "ping":
           sendResponse({ ok: true, base_url: await getBaseUrl() });
           return;
+
+        case "api-request": {
+          const { path, method, body } = message.payload;
+          let data;
+          if (method === "POST") {
+            data = await postJson(path, body);
+          } else if (method === "DELETE") {
+            // Support DELETE as well for completeness
+            const baseUrl = await getBaseUrl();
+            const auth = await getAuthHeader();
+            const resp = await fetch(`${baseUrl}${path}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json", ...auth },
+            });
+            data = await parseResponse(resp);
+          } else {
+            data = await getJson(path);
+          }
+          sendResponse({ ok: true, data });
+          return;
+        }
 
         case "login": {
           const data = await postJson("/auth/login", message.payload);

@@ -1,0 +1,11 @@
+{
+  "name": "mailguard-ai-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for MailGuard-AI Chrome Extension",
+  "scripts": {
+    "test:extension": "node scripts/test_chrome_extension.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

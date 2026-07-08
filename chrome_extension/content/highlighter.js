@@ -23,6 +23,13 @@ const Highlighter = {
   renderBanner(prediction) {
     document.getElementById(this.BANNER_ID)?.remove();
 
+    const emailContainer = window.GmailScraper?.findOpenEmailContainer();
+    if (!emailContainer) {
+      // If the email container is no longer present in the DOM (e.g. user went back to inbox),
+      // do not render the banner.
+      return;
+    }
+
     const banner = document.createElement("div");
     banner.id = this.BANNER_ID;
     banner.className = `mg-banner mg-banner--${prediction.threat_level}`;
@@ -48,9 +55,7 @@ const Highlighter = {
       </div>
     `;
 
-    const container =
-      window.GmailScraper?.findOpenEmailContainer()?.parentElement || document.body;
-    container.prepend(banner);
+    emailContainer.parentElement.prepend(banner);
 
     banner.querySelectorAll("[data-mg-action]").forEach((btn) => {
       btn.addEventListener("click", () =>

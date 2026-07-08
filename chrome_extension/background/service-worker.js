@@ -15,7 +15,8 @@
  *  - Firebase and Gmail state are refreshed lazily on first message.
  */
 
-import { api } from "../lib/api.js";
+import "../lib/api.js";
+const api = globalThis.MailGuardAPI;
 import {
   fetchDecodedInbox,
   getGmailAccessToken,
@@ -138,6 +139,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     try {
       if (message.type === "ping") {
         sendResponse({ ok: true });
+        return;
+      }
+
+      if (message.type === "api-request") {
+        const { path, method, body } = message.payload;
+        const data = await api._request(path, { method, body });
+        sendResponse({ ok: true, data });
         return;
       }
 

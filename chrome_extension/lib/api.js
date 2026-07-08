@@ -13,15 +13,13 @@
  *   that JWT via Authorization: Bearer.
  */
 
-import { getBackendToken } from "./firebase.js";
-
 const STORAGE_KEYS = {
   BASE_URL: "mg_base_url",
   TOKEN: "mg_token",
   USER: "mg_user",
 };
 
-const DEFAULT_BASE_URL = "https://mailguard-ai-y0nh.onrender.com/api/v1";
+const DEFAULT_BASE_URL = "http://localhost:8003/api/v1";
 
 class MailGuardAPI {
   constructor() {
@@ -64,6 +62,25 @@ class MailGuardAPI {
   }
 
   async _request(path, { method = "GET", body = null, auth = true } = {}) {
+    if (typeof window !== "undefined" && window.location.protocol.startsWith("http")) {
+      console.log("[MailGuard] Delegating request to background:", { path, method });
+      // Delegate to background service worker to bypass CSP and Mixed Content blocks
+      return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          type: "api-request",
+          payload: { path, method, body }
+        }, response => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (response && !response.ok) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response ? response.data : null);
+          }
+        });
+      });
+    }
+
     const url = `${this.baseUrl}${path}`;
     const headers = { "Content-Type": "application/json" };
     if (auth) {
@@ -73,7 +90,8 @@ class MailGuardAPI {
       let token = this.token;
       if (!token) {
         try {
-          token = await getBackendToken();
+          const firebase = await import("./firebase.js");
+          token = await firebase.getBackendToken();
         } catch {
           // No Firebase session; let the request go without a token —
           // public endpoints (register/login) handle their own auth.
@@ -207,11 +225,8 @@ class MailGuardAPI {
 }
 
 // Singleton instance shared across content scripts, the popup, and the
-// background service worker. We export it via ES modules and also attach
-// it to the available global object so non-module scripts can use it too.
+// background service worker. We attach it to the available global object.
 const api = new MailGuardAPI();
-export { api };
-export default api;
 
 // Expose to `window` for content scripts / popup / options (classic scripts).
 if (typeof window !== "undefined") {

@@ -4,7 +4,10 @@
  */
 
 (async function initOptions() {
-  const api = window.MailGuardAPI || (await import("../lib/api.js")).api;
+  if (!window.MailGuardAPI) {
+    await import("../lib/api.js");
+  }
+  const api = window.MailGuardAPI;
   await api.loadConfig();
   const firebaseAuth = await import("../lib/firebase.js");
 
